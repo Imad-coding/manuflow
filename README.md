@@ -1,12 +1,12 @@
-# ManuFlow
+# FulfillForge
 
+**Production workflow for Shopify merchants.**
 
+[fulfillforge.store](https://fulfillforge.store)
 
-Shopify-connected manufacturing production board. Syncs Shopify orders into a local SQLite database and lets merchants manage production statuses.
+FulfillForge syncs Shopify orders into a local SQLite database and lets merchants manage production statuses across dashboard, board, and order detail views.
 
-
-
-ManuFlow is a **standalone Node.js app** — it connects to Shopify via credentials in your `.env` file. There is no OAuth, install flow, App Bridge, or billing.
+FulfillForge is a **standalone Node.js app** — it connects to Shopify via credentials in your `.env` file. There is no OAuth, install flow, App Bridge, or billing.
 
 
 
@@ -86,7 +86,7 @@ Check **Settings** for a credential checklist and connection status.
 
 
 
-ManuFlow uses a **Shopify custom app** access token — not a public/installable app.
+FulfillForge uses a **Shopify custom app** access token — not a public/installable app.
 
 
 
@@ -100,7 +100,7 @@ ManuFlow uses a **Shopify custom app** access token — not a public/installable
 
 3. Click **Develop apps** (enable custom app development if prompted).
 
-4. Click **Create an app** and name it (e.g. `ManuFlow`).
+4. Click **Create an app** and name it (e.g. `FulfillForge`).
 
 5. Open **Configuration → Admin API integration**.
 
@@ -224,9 +224,43 @@ The sync API returns specific messages for common issues:
 
 | `npm start` | Start production server |
 
+| `npm run backup` | Create a timestamped SQLite backup in `./backups` |
 
 
-## Troubleshooting
+
+## Database backup
+
+
+
+Create a safe copy of the SQLite database (WAL checkpoint, then file copy):
+
+
+
+```bash
+
+npm run backup
+
+```
+
+
+
+Backups are written to `./backups/` (or `SQLITE_BACKUP_DIR` if set) as:
+
+
+
+```
+
+fulfillforge-backup-YYYY-MM-DD-HH-mm.sqlite3
+
+```
+
+
+
+The script reads `SQLITE_DATABASE_PATH` from `.env` (default: `./data/manuflow.sqlite3`), runs `PRAGMA wal_checkpoint(FULL)` before copying, and does **not** serve backup files over HTTP — they stay outside `public/`.
+
+
+
+Restore by stopping the app, replacing the database file with a backup copy, and restarting.
 
 
 
@@ -324,5 +358,5 @@ GET /export/production-orders.csv?status=In%20Production&location=1&search=SKU12
 
 
 
-The response is a downloadable CSV file (`Content-Type: text/csv`, filename `manuflow-production-orders.csv`).
+The response is a downloadable CSV file (`Content-Type: text/csv`, filename `fulfillforge-production-orders.csv`).
 

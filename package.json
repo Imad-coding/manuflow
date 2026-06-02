@@ -1,11 +1,12 @@
 {
-  "name": "manuflow",
+  "name": "fulfillforge",
   "version": "1.0.0",
-  "description": "Shopify-connected manufacturing production board",
+  "description": "Production workflow for Shopify merchants",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "backup": "node scripts/backup-db.js"
   },
   "engines": {
     "node": ">=22.5.0"

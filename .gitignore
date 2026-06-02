@@ -3,4 +3,5 @@ node_modules/
 data/*.sqlite3
 data/*.sqlite3-wal
 data/*.sqlite3-shm
+backups/
 .DS_Store

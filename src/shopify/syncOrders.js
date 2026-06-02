@@ -131,7 +131,7 @@ function syncLocationsFromOrders(shopId, shopifyOrders, knownQueryLocationIds) {
     key: item.key,
   }));
   setLastFulfillmentLocations(debugEntries);
-  console.log('[ManuFlow sync] Fulfillment assigned locations discovered:', debugEntries);
+  console.log('[FulfillForge sync] Fulfillment assigned locations discovered:', debugEntries);
 
   for (const item of assignedLocations.values()) {
     upsertLocationFromAssignedLocation(shopId, item.assignedLocation, knownQueryLocationIds);

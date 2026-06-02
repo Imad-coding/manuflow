@@ -1,4 +1,4 @@
-/* ManuFlow client helpers */
+/* FulfillForge client helpers */
 
 function showToast(message, isError = false) {
   const toast = document.getElementById('toast');

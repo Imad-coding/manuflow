@@ -55,7 +55,7 @@ router.get('/export/production-orders.csv', (req, res) => {
   const csv = buildCsv(CSV_HEADERS, rows.map(rowToCsvValues));
 
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="manuflow-production-orders.csv"');
+  res.setHeader('Content-Disposition', 'attachment; filename="fulfillforge-production-orders.csv"');
   res.send(csv);
 });
 

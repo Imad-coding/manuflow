@@ -64,5 +64,5 @@ app.use((err, req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`ManuFlow running at http://localhost:${PORT}`);
+  console.log(`FulfillForge running at http://localhost:${PORT}`);
 });
