@@ -1,0 +1,19 @@
+<header class="app-nav" role="banner">
+  <div class="app-nav__inner">
+    <a href="/dashboard" class="app-nav__brand">
+      <span class="app-nav__logo" aria-hidden="true">M</span>
+      <span class="app-nav__name">ManuFlow</span>
+    </a>
+    <nav class="app-nav__links" aria-label="Main">
+      <a href="/dashboard"
+         class="app-nav__link <%= activePage === 'dashboard' ? 'is-active' : '' %>">Dashboard</a>
+      <a href="/production-board"
+         class="app-nav__link <%= activePage === 'board' ? 'is-active' : '' %>">Production Board</a>
+      <a href="/settings"
+         class="app-nav__link <%= activePage === 'settings' ? 'is-active' : '' %>">Settings</a>
+    </nav>
+    <div class="app-nav__meta">
+      <%- include('connectionBadge') %>
+    </div>
+  </div>
+</header>

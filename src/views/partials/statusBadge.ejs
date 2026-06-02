@@ -1,0 +1,11 @@
+<%
+  const statusStyles = {
+    'New': 'badge-tone-info',
+    'In Production': 'badge-tone-warning',
+    'Waiting Material': 'badge-tone-caution',
+    'Done': 'badge-tone-success',
+    'Packed': 'badge-tone-neutral',
+  };
+  const cls = statusStyles[status] || 'badge-tone-neutral';
+%>
+<span class="badge <%= cls %>"><%= status %></span>

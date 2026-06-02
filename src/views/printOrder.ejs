@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'Production Sheet' %> — ManuFlow</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12pt;
+      line-height: 1.45;
+      color: #000;
+      background: #fff;
+    }
+    .sheet {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 12mm 14mm;
+    }
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #ccc;
+    }
+    .toolbar a, .toolbar button {
+      font: inherit;
+      font-size: 11pt;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid #333;
+      background: #fff;
+      color: #000;
+      cursor: pointer;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .toolbar button.primary {
+      background: #000;
+      color: #fff;
+      border-color: #000;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 2px solid #000;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand p {
+      margin: 0.15rem 0 0;
+      font-size: 0.75rem;
+      color: #333;
+    }
+    .doc-title {
+      margin: 0 0 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.65rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (min-width: 480px) {
+      .meta-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .meta-item dt {
+      margin: 0;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #444;
+    }
+    .meta-item dd {
+      margin: 0.15rem 0 0;
+      font-weight: 600;
+    }
+    .items-section h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #000;
+      padding-bottom: 0.35rem;
+    }
+    .line-item {
+      display: flex;
+      gap: 1rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid #ddd;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .line-item:last-child { border-bottom: none; }
+    .line-img {
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+      border: 1px solid #ccc;
+      object-fit: cover;
+      background: #f5f5f5;
+    }
+    .line-img-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: #666;
+      text-align: center;
+      padding: 0.25rem;
+    }
+    .line-body { flex: 1; min-width: 0; }
+    .line-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .line-meta {
+      margin: 0.5rem 0 0;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.35rem 1rem;
+      font-size: 0.85rem;
+    }
+    .line-meta dt {
+      display: inline;
+      font-weight: 600;
+    }
+    .line-meta dt::after { content: ': '; }
+    .line-meta dd {
+      display: inline;
+      margin: 0;
+      font-weight: 400;
+    }
+    .options {
+      margin: 0.5rem 0 0;
+      font-size: 0.85rem;
+    }
+    .options span {
+      display: inline-block;
+      margin: 0.15rem 0.35rem 0.15rem 0;
+      padding: 0.1rem 0.4rem;
+      border: 1px solid #999;
+      border-radius: 2px;
+    }
+    .notes {
+      margin-top: 1.25rem;
+      padding: 0.75rem;
+      border: 1px solid #000;
+    }
+    .notes h2 {
+      margin: 0 0 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .notes p {
+      margin: 0;
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+    }
+    .footer {
+      margin-top: 1.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #ccc;
+      font-size: 0.7rem;
+      color: #444;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .not-found {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    @page {
+      size: A4;
+      margin: 10mm 12mm;
+    }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .sheet {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+      .line-item { border-color: #999; }
+      a { color: #000; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <% if (typeof notFound !== 'undefined' && notFound) { %>
+    <div class="sheet not-found">
+      <div class="no-print toolbar">
+        <a href="/dashboard">← Back to Dashboard</a>
+      </div>
+      <h1>Production order not found</h1>
+      <p><%= typeof message !== 'undefined' ? message : 'Unable to load this print sheet.' %></p>
+    </div>
+  <% } else { %>
+    <% const o = order; %>
+    <% const printed = typeof printedAt !== 'undefined' ? printedAt : new Date().toISOString(); %>
+    <% const printedLabel = printed.slice(0, 16).replace('T', ' '); %>
+    <% const orderDate = o.order_date ? o.order_date.slice(0, 10) : '—'; %>
+    <% const dueDate = o.due_date || '—'; %>
+    <% const locationName = o.location_name || 'Unassigned / Unknown'; %>
+    <% const customerName = o.customer_name || '—'; %>
+    <% const notes = (o.internal_notes || '').trim(); %>
+
+    <div class="sheet">
+      <div class="no-print toolbar">
+        <button type="button" class="primary" onclick="window.print()">Print Sheet</button>
+        <a href="/orders/<%= o.id %>">← Back to order</a>
+        <a href="/dashboard">Dashboard</a>
+      </div>
+
+      <header class="brand">
+        <div>
+          <h1>ManuFlow</h1>
+          <p>Production Sheet</p>
+        </div>
+        <div style="text-align: right;">
+          <p style="font-size: 1.25rem; font-weight: 700; margin: 0;"><%= o.order_name %></p>
+          <p style="margin: 0.2rem 0 0;">Job #<%= o.id %></p>
+        </div>
+      </header>
+
+      <p class="doc-title">Print Job Sheet</p>
+
+      <dl class="meta-grid">
+        <div class="meta-item">
+          <dt>Order number</dt>
+          <dd><%= o.order_name %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Customer</dt>
+          <dd><%= customerName %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Order date</dt>
+          <dd><%= orderDate %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Due date</dt>
+          <dd><%= dueDate %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Priority</dt>
+          <dd><%= o.priority || '—' %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Production status</dt>
+          <dd><%= o.status || '—' %></dd>
+        </div>
+        <div class="meta-item" style="grid-column: span 2;">
+          <dt>Assigned location</dt>
+          <dd><%= locationName %></dd>
+        </div>
+      </dl>
+
+      <section class="items-section">
+        <h2>Production items (<%= (o.items && o.items.length) || 0 %>)</h2>
+
+        <% if (!o.items || o.items.length === 0) { %>
+          <p style="color: #444; margin: 0;">No line items on this production order.</p>
+        <% } else { %>
+          <% o.items.forEach(function(item, index) { %>
+            <article class="line-item">
+              <% if (item.image_url) { %>
+                <img src="<%= item.image_url %>" alt="" class="line-img" loading="eager">
+              <% } else { %>
+                <div class="line-img line-img-empty">No image</div>
+              <% } %>
+              <div class="line-body">
+                <h3 class="line-title"><%= item.title || 'Untitled item' %></h3>
+                <dl class="line-meta">
+                  <div>
+                    <dt>SKU</dt>
+                    <dd><%= item.sku || '—' %></dd>
+                  </div>
+                  <div>
+                    <dt>Quantity</dt>
+                    <dd><%= item.quantity != null ? item.quantity : '—' %></dd>
+                  </div>
+                  <div>
+                    <dt>Variant</dt>
+                    <dd><%= item.variant_title || '—' %></dd>
+                  </div>
+                  <div>
+                    <dt>Item</dt>
+                    <dd><%= index + 1 %> of <%= o.items.length %></dd>
+                  </div>
+                </dl>
+                <% if (item.options && item.options.length) { %>
+                  <div class="options">
+                    <strong>Options:</strong>
+                    <% item.options.forEach(function(opt) { %>
+                      <span><%= opt.name || 'Option' %>: <%= opt.value || '—' %></span>
+                    <% }); %>
+                  </div>
+                <% } %>
+              </div>
+            </article>
+          <% }); %>
+        <% } %>
+      </section>
+
+      <section class="notes">
+        <h2>Internal notes</h2>
+        <% if (notes) { %>
+          <p><%= notes %></p>
+        <% } else { %>
+          <p style="color: #666;">No internal notes.</p>
+        <% } %>
+      </section>
+
+      <footer class="footer">
+        <span>ManuFlow — Production Sheet</span>
+        <span>Printed at <%= printedLabel %></span>
+      </footer>
+    </div>
+  <% } %>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<header class="page-header">
+  <div class="page-header__text">
+    <% if (typeof breadcrumbs !== 'undefined' && breadcrumbs) { %>
+      <nav class="page-breadcrumbs" aria-label="Breadcrumb">
+        <% breadcrumbs.forEach(function(crumb, i) { %>
+          <% if (i > 0) { %><span class="page-breadcrumbs__sep" aria-hidden="true">/</span><% } %>
+          <% if (crumb.href) { %>
+            <a href="<%= crumb.href %>" class="page-breadcrumbs__link"><%= crumb.label %></a>
+          <% } else { %>
+            <span class="page-breadcrumbs__current"><%= crumb.label %></span>
+          <% } %>
+        <% }); %>
+      </nav>
+    <% } %>
+    <h1 class="page-header__title"><%= pageTitle || title %></h1>
+    <% if (typeof pageSubtitle !== 'undefined' ? pageSubtitle : (typeof subtitle !== 'undefined' && subtitle)) { %>
+      <p class="page-header__subtitle"><%= typeof pageSubtitle !== 'undefined' ? pageSubtitle : subtitle %></p>
+    <% } %>
+  </div>
+  <% if (typeof headerActions !== 'undefined' && headerActions) { %>
+    <div class="page-header__actions"><%- headerActions %></div>
+  <% } %>
+</header>

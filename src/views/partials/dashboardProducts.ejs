@@ -1,0 +1,37 @@
+<% var itemsList = (typeof orderItems !== 'undefined' && Array.isArray(orderItems)) ? orderItems : []; %>
+<% var visibleLimit = (typeof maxVisible !== 'undefined') ? maxVisible : 3; %>
+<% var visibleItems = itemsList.slice(0, visibleLimit); %>
+<% var hiddenCount = itemsList.length - visibleItems.length; %>
+<% if (itemsList.length === 0) { %>
+  <span class="dashboard-products-empty">No products</span>
+<% } else { %>
+  <ul class="dashboard-products-list" aria-label="<%= itemsList.length %> product<%= itemsList.length === 1 ? '' : 's' %>">
+    <% visibleItems.forEach(function(item) { %>
+      <li class="dashboard-product-line">
+        <% if (item.image_url) { %>
+          <img src="<%= item.image_url %>" alt="" class="dashboard-product-thumb" loading="lazy">
+        <% } else { %>
+          <span class="dashboard-product-thumb dashboard-product-thumb--empty" aria-hidden="true">—</span>
+        <% } %>
+        <span class="dashboard-product-text">
+          <span class="dashboard-product-title" title="<%= item.title %>"><%= item.title %></span>
+          <span class="dashboard-product-meta">
+            <% if (item.sku) { %><span class="dashboard-product-sku"><%= item.sku %></span><% } %>
+            <% if (item.variant_label) { %>
+              <% if (item.sku) { %><span class="dashboard-product-sep">·</span><% } %>
+              <span class="dashboard-product-variant"><%= item.variant_label %></span>
+            <% } else if (item.variant_title) { %>
+              <% if (item.sku) { %><span class="dashboard-product-sep">·</span><% } %>
+              <span class="dashboard-product-variant"><%= item.variant_title %></span>
+            <% } %>
+            <span class="dashboard-product-sep">·</span>
+            <span class="dashboard-product-qty">Qty <%= item.quantity %></span>
+          </span>
+        </span>
+      </li>
+    <% }); %>
+    <% if (hiddenCount > 0) { %>
+      <li class="dashboard-product-more">+<%= hiddenCount %> more product<%= hiddenCount === 1 ? '' : 's' %></li>
+    <% } %>
+  </ul>
+<% } %>

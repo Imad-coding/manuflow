@@ -1,0 +1,10 @@
+<%
+  const priorityStyles = {
+    'Low': 'badge-tone-neutral',
+    'Normal': 'badge-tone-neutral',
+    'High': 'badge-tone-warning',
+    'Urgent': 'badge-tone-critical',
+  };
+  const cls = priorityStyles[priority] || 'badge-tone-neutral';
+%>
+<span class="badge <%= cls %>"><%= priority %></span>

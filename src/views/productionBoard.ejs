@@ -1,0 +1,97 @@
+<div class="page-production-board page-stack">
+  <%- include('partials/pageHeader', {
+    pageTitle: 'Production board',
+    pageSubtitle: 'Manage production status across workflow columns.',
+  }) %>
+
+  <section class="polaris-card">
+    <form method="GET" action="/production-board" class="index-filters">
+      <div class="index-filters__row">
+        <div class="index-filters__field" style="flex:1;max-width:16rem;">
+          <select name="location" class="form-select form-select-compact" aria-label="Location">
+            <option value="">All enabled locations</option>
+            <% locations.forEach(function(loc) { %>
+              <option value="<%= loc.id %>" <%= filters.location == loc.id ? 'selected' : '' %>><%= loc.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="index-filters__actions">
+          <button type="submit" class="btn-primary btn-compact">Apply</button>
+          <% if (filters.location) { %>
+            <a href="/production-board" class="btn-plain">Reset</a>
+          <% } %>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <div class="metric-row metric-row--board">
+    <% const summaryCards = [
+      { label: 'Total orders', value: boardSummary.totalOrders },
+      { label: 'Urgent', value: boardSummary.urgent },
+      { label: 'Waiting material', value: boardSummary.waitingMaterial },
+      { label: 'Done', value: boardSummary.done },
+    ]; %>
+    <% summaryCards.forEach(function(sc) { %>
+      <div class="metric-card" style="cursor:default;">
+        <p class="metric-card__label"><%= sc.label %></p>
+        <p class="metric-card__value"><%= sc.value %></p>
+      </div>
+    <% }); %>
+  </div>
+
+  <div class="board-scroll-shell">
+    <div class="board-scroll-track" role="region" aria-label="Production workflow columns">
+      <% statuses.forEach(function(status) { %>
+        <% const columnCards = board[status] || []; %>
+        <div class="board-column">
+          <div class="kanban-column">
+            <div class="kanban-column-header">
+              <%- include('partials/statusBadge', { status: status }) %>
+              <span class="kanban-count"><%= columnCards.length %></span>
+            </div>
+            <div class="kanban-column-body">
+              <% if (columnCards.length === 0) { %>
+                <div class="kanban-empty"><p>No orders</p></div>
+              <% } else { %>
+                <% columnCards.forEach(function(card) { %>
+                  <article class="kanban-card">
+                    <a href="/orders/<%= card.id %>" class="kanban-card-link">
+                      <div class="kanban-card-header">
+                        <span class="order-link"><%= card.order_name %></span>
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                          <%- include('partials/priorityBadge', { priority: card.priority }) %>
+                        </div>
+                      </div>
+                      <p class="kanban-card-title" title="<%= card.primary_title %>"><%= card.primary_title %></p>
+                      <% if (card.item_count > 1) { %>
+                        <p class="kanban-card-more">+<%= card.item_count - 1 %> more item<%= card.item_count - 1 === 1 ? '' : 's' %></p>
+                      <% } %>
+                      <dl class="kanban-meta">
+                        <div class="kanban-meta-row"><dt>SKU</dt><dd class="cell-sku"><%= card.primary_sku || '—' %></dd></div>
+                        <div class="kanban-meta-row"><dt>Qty</dt><dd><%= card.primary_quantity %></dd></div>
+                        <div class="kanban-meta-row"><dt>Loc</dt><dd title="<%= card.location_name || 'Unassigned' %>"><%= card.location_name || 'Unassigned' %></dd></div>
+                        <div class="kanban-meta-row"><dt>Due</dt><dd><%- include('partials/dueDateBadge', { dueDate: card.due_date, compactMode: true }) %></dd></div>
+                      </dl>
+                    </a>
+                    <div class="kanban-card-action">
+                      <label class="form-label">Move to</label>
+                      <select data-action="board-status"
+                              data-order-id="<%= card.id %>"
+                              data-current-status="<%= card.status %>"
+                              class="form-select form-select-compact kanban-status-select">
+                        <% statuses.forEach(function(s) { %>
+                          <option value="<%= s %>" <%= card.status === s ? 'selected' : '' %>><%= s %></option>
+                        <% }); %>
+                      </select>
+                    </div>
+                  </article>
+                <% }); %>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+</div>

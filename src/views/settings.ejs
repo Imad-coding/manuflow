@@ -1,0 +1,267 @@
+<div class="page-settings page-stack">
+  <%- include('partials/pageHeader', {
+    pageTitle: 'Settings',
+    pageSubtitle: 'Shopify connection, sync, and fulfillment locations.',
+  }) %>
+
+  <% const conn = typeof connection !== 'undefined' ? connection : { mode: 'demo', configured: false }; %>
+  <% const isConnected = conn.mode === 'connected' && conn.configured; %>
+  <% const last = typeof latestSync !== 'undefined' ? latestSync : null; %>
+  <% const history = typeof syncHistory !== 'undefined' ? syncHistory : []; %>
+  <% const ctx = typeof shopContext !== 'undefined' ? shopContext : { mode: 'demo', shopDomain: null, shopId: null, productionOrders: 0, locations: 0 }; %>
+  <% const demo = typeof demoData !== 'undefined' ? demoData : { exists: false, productionOrders: 0, locations: 0 }; %>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <div class="polaris-card__heading">
+        <h2 class="polaris-card__title">Shopify connection</h2>
+        <p class="polaris-card__subtitle">Credentials from <span class="code-inline">.env</span> — no OAuth or install flow</p>
+      </div>
+    </div>
+    <div class="polaris-card__body space-y-4">
+      <div class="flex gap-3">
+        <div class="settings-icon-wrap <%= isConnected ? 'settings-icon-connected' : 'settings-icon-demo' %>">
+          <% if (isConnected) { %>
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <% } else { %>
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+          <% } %>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="font-semibold text-sm"><%= isConnected ? 'Connected mode' : 'Demo mode' %></p>
+            <%- include('partials/connectionBadge', { shopifyConnected: isConnected }) %>
+          </div>
+          <p class="mt-1 text-[0.8125rem]" style="color:var(--p-text-subdued);line-height:1.4;">
+            <% if (isConnected) { %>
+              Sync pulls open orders using your Admin API access token.
+            <% } else { %>
+              Add credentials to <span class="code-inline">.env</span> and restart the server to connect Shopify.
+            <% } %>
+          </p>
+        </div>
+      </div>
+
+      <div class="settings-env-table">
+        <div class="settings-env-table__head">Environment variables</div>
+        <div class="settings-env-row">
+          <span class="code-inline">SHOPIFY_SHOP_DOMAIN</span>
+          <span class="flex items-center gap-2">
+            <% if (!conn.hasShopDomain) { %>
+              <span class="badge badge-tone-neutral">Not set</span>
+            <% } else if (!conn.shopDomainValid) { %>
+              <span class="badge badge-tone-critical">Invalid</span>
+              <span style="color:var(--p-text-subdued)"><%= conn.shopDomain %></span>
+            <% } else { %>
+              <span class="badge badge-tone-success">Set</span>
+              <span class="font-medium"><%= conn.shopDomain %></span>
+            <% } %>
+          </span>
+        </div>
+        <div class="settings-env-row">
+          <span class="code-inline">SHOPIFY_ADMIN_ACCESS_TOKEN</span>
+          <span class="flex items-center gap-2">
+            <% if (!conn.hasAccessToken) { %>
+              <span class="badge badge-tone-neutral">Not set</span>
+            <% } else { %>
+              <span class="badge badge-tone-success">Set</span>
+              <span class="code-inline"><%= conn.tokenPreview %></span>
+            <% } %>
+          </span>
+        </div>
+        <div class="settings-env-row">
+          <span class="code-inline">SHOPIFY_API_VERSION</span>
+          <span class="code-inline"><%= conn.apiVersion %></span>
+        </div>
+      </div>
+
+      <% if (!isConnected && (conn.hasShopDomain || conn.hasAccessToken)) { %>
+        <div class="settings-banner settings-banner--warning">
+          <% if (conn.hasShopDomain && !conn.shopDomainValid) { %>
+            <strong>Invalid shop domain.</strong> Use <span class="code-inline">your-store.myshopify.com</span>.
+          <% } else { %>
+            <strong>Incomplete credentials.</strong> Both env vars are required. Restart after editing <span class="code-inline">.env</span>.
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <div class="polaris-card__heading">
+        <h2 class="polaris-card__title">Sync orders</h2>
+        <p class="polaris-card__subtitle">Pull open and unfulfilled orders from Shopify</p>
+      </div>
+    </div>
+    <div class="polaris-card__body">
+      <% if (!isConnected) { %>
+        <div class="settings-banner settings-banner--warning mb-3">
+          Demo mode — sync requires valid Shopify credentials in <span class="code-inline">.env</span>.
+        </div>
+      <% } %>
+      <button type="button" id="sync-btn" data-action="sync-orders" class="btn-primary">Sync Shopify orders</button>
+      <div id="sync-result" class="sync-result hidden"></div>
+    </div>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <h2 class="polaris-card__title">Sync history</h2>
+      <p class="polaris-card__subtitle">Latest sync results for the connected shop</p>
+    </div>
+    <div class="polaris-card__body">
+      <% if (!last) { %>
+        <p style="color:var(--p-text-subdued)">No syncs recorded yet.</p>
+      <% } else { %>
+        <div class="mb-4 pb-4 border-b" style="border-color:var(--p-border-subdued)">
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="font-semibold text-sm">Last sync</span>
+            <span class="badge <%= last.status === 'success' ? 'badge-tone-success' : 'badge-tone-critical' %>"><%= last.status %></span>
+            <span class="text-xs" style="color:var(--p-text-subdued)"><%= last.created_at %></span>
+          </div>
+          <p class="text-[0.8125rem] mb-3"><%= last.message %></p>
+          <dl class="settings-stat-grid">
+            <div class="settings-stat-cell"><dt>Orders found</dt><dd><%= last.orders_found %></dd></div>
+            <div class="settings-stat-cell"><dt>Created</dt><dd><%= last.production_orders_created %></dd></div>
+            <div class="settings-stat-cell"><dt>Updated</dt><dd><%= last.production_orders_updated %></dd></div>
+            <div class="settings-stat-cell"><dt>Items</dt><dd><%= last.items_synced %></dd></div>
+            <div class="settings-stat-cell"><dt>Locations</dt><dd><%= last.locations_synced %></dd></div>
+            <div class="settings-stat-cell"><dt>Fulf. locs</dt><dd><%= last.discovered_locations_synced ?? 0 %></dd></div>
+          </dl>
+          <% if (last.orders_found === 0 && last.status === 'success') { %>
+            <p class="mt-2 text-xs settings-banner settings-banner--warning">No open Shopify orders found.</p>
+          <% } %>
+        </div>
+      <% } %>
+
+      <% if (history.length > 0) { %>
+        <div class="overflow-x-auto">
+          <table class="data-table data-table-compact min-w-full">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Orders</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th>Items</th>
+                <th>Locs</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% history.forEach(function(log) { %>
+                <tr>
+                  <td class="cell-date text-xs"><%= log.created_at %></td>
+                  <td class="cell-badge">
+                    <span class="badge <%= log.status === 'success' ? 'badge-tone-success' : 'badge-tone-critical' %>"><%= log.status %></span>
+                  </td>
+                  <td class="tabular-nums"><%= log.orders_found %></td>
+                  <td class="tabular-nums"><%= log.production_orders_created %></td>
+                  <td class="tabular-nums"><%= log.production_orders_updated %></td>
+                  <td class="tabular-nums"><%= log.items_synced %></td>
+                  <td class="tabular-nums"><%= log.locations_synced %></td>
+                  <td class="max-w-[200px] truncate text-xs" style="color:var(--p-text-subdued)" title="<%= log.message %>"><%= log.message %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <h2 class="polaris-card__title">Locations</h2>
+      <p class="polaris-card__subtitle">Enable fulfillment locations for dashboard filters</p>
+    </div>
+    <% if (locations.length === 0) { %>
+      <%- include('partials/emptyState', {
+        heading: 'No locations yet',
+        message: isConnected ? 'Sync orders to import fulfillment locations.' : 'Connect Shopify and sync to import locations.',
+        actionUrl: '',
+      }) %>
+    <% } else { %>
+      <div class="polaris-card__body polaris-card__body--flush overflow-x-auto">
+        <table class="data-table data-table-compact min-w-full">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Type</th>
+              <th>Shopify ID</th>
+              <th>Status</th>
+              <th class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% locations.forEach(function(loc) { %>
+              <tr>
+                <td class="font-medium"><%= loc.name %></td>
+                <td class="cell-badge">
+                  <span class="badge badge-tone-neutral"><%= loc.badge.label %></span>
+                </td>
+                <td class="cell-sku max-w-[180px] truncate" title="<%= loc.shopify_location_id %>"><%= loc.shopify_location_id %></td>
+                <td class="cell-badge">
+                  <% if (loc.enabled) { %>
+                    <span class="badge badge-tone-success">Enabled</span>
+                  <% } else { %>
+                    <span class="badge badge-tone-neutral">Disabled</span>
+                  <% } %>
+                </td>
+                <td class="text-right">
+                  <button type="button"
+                          data-action="toggle-location"
+                          data-location-id="<%= loc.id %>"
+                          data-enabled="<%= loc.enabled ? 'false' : 'true' %>"
+                          class="btn-secondary btn-compact <%= loc.enabled ? 'btn-critical-outline' : 'btn-success-outline' %>">
+                    <%= loc.enabled ? 'Disable' : 'Enable' %>
+                  </button>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <h2 class="polaris-card__title">Production statuses</h2>
+      <p class="polaris-card__subtitle">Workflow stages used across the app</p>
+    </div>
+    <div class="polaris-card__body">
+      <div class="flex flex-wrap gap-2">
+        <% statuses.forEach(function(s) { %>
+          <%- include('partials/statusBadge', { status: s }) %>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+
+  <section class="polaris-card polaris-card--debug">
+    <div class="polaris-card__header">
+      <h2 class="polaris-card__title">Developer / debug</h2>
+    </div>
+    <div class="polaris-card__body space-y-3">
+      <dl class="order-meta-grid">
+        <div><dt>Current mode</dt><dd class="capitalize"><%= ctx.mode %></dd></div>
+        <div><dt>Shop domain</dt><dd class="code-inline"><%= ctx.shopDomain || '—' %></dd></div>
+        <div><dt>shop_id</dt><dd class="code-inline"><%= ctx.shopId != null ? ctx.shopId : '—' %></dd></div>
+        <div><dt>Production orders</dt><dd><%= ctx.productionOrders ?? 0 %></dd></div>
+        <div><dt>Locations</dt><dd><%= ctx.locations ?? 0 %></dd></div>
+        <div><dt>API</dt><dd class="code-inline">GET /api/debug/db-summary</dd></div>
+      </dl>
+      <% if (isConnected && demo.exists) { %>
+        <div class="settings-banner settings-banner--warning flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p>Demo shop still in database (<%= demo.productionOrders %> orders). Safe to remove.</p>
+          <button type="button" id="clear-demo-btn" data-action="clear-demo-data" class="btn-secondary btn-compact btn-critical-outline shrink-0">
+            Clear demo data
+          </button>
+        </div>
+      <% } %>
+    </div>
+  </section>
+</div>

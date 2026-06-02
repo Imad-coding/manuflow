@@ -1,0 +1,10 @@
+<div class="empty-state">
+  <div class="empty-state__icon" aria-hidden="true">
+    <%- include('icons', { icon: 'empty', cls: 'w-10 h-10' }) %>
+  </div>
+  <h3 class="empty-state__heading"><%= heading || 'No results found' %></h3>
+  <p class="empty-state__message"><%= message || 'Try adjusting your filters or sync new orders from Shopify.' %></p>
+  <% if (typeof actionUrl !== 'undefined' && actionUrl) { %>
+    <a href="<%= actionUrl %>" class="btn-secondary empty-state__action"><%= actionLabel || 'Reset filters' %></a>
+  <% } %>
+</div>

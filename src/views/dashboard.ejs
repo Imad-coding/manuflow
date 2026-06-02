@@ -1,0 +1,170 @@
+<div class="page-dashboard page-stack">
+  <header class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title"><%= typeof pageTitle !== 'undefined' ? pageTitle : 'Production orders' %></h1>
+      <p class="page-header__subtitle"><%= typeof pageSubtitle !== 'undefined' ? pageSubtitle : 'Track Shopify orders through your production workflow.' %></p>
+    </div>
+    <div class="page-header__actions">
+      <button type="button" id="sync-btn" data-action="sync-orders" class="btn-primary btn-compact">
+        Sync orders
+      </button>
+      <a href="<%= exportUrl %>" class="btn-secondary btn-compact" title="Download filtered list as CSV">
+        <%- include('partials/icons', { icon: 'download', cls: 'w-3.5 h-3.5' }) %>
+        Export CSV
+      </a>
+    </div>
+  </header>
+
+  <div class="metric-row">
+    <% const cards = [
+      { key: 'newOrders', label: 'New', filter: 'New' },
+      { key: 'inProduction', label: 'In production', filter: 'In Production' },
+      { key: 'waitingMaterial', label: 'Waiting material', filter: 'Waiting Material' },
+      { key: 'done', label: 'Done', filter: 'Done' },
+      { key: 'urgent', label: 'Urgent', href: '/dashboard?priority=Urgent' },
+    ]; %>
+    <% cards.forEach(function(card) { %>
+      <a href="<%= card.href || ('/dashboard?status=' + encodeURIComponent(card.filter)) %>" class="metric-card">
+        <p class="metric-card__label"><%= card.label %></p>
+        <p class="metric-card__value"><%= overview[card.key] %></p>
+      </a>
+    <% }); %>
+  </div>
+
+  <section class="polaris-card">
+    <form method="GET" action="/dashboard" class="index-filters">
+      <div class="index-filters__row">
+        <div class="index-filters__search input-with-icon">
+          <span class="input-with-icon__icon">
+            <%- include('partials/icons', { icon: 'search', cls: 'w-4 h-4' }) %>
+          </span>
+          <input type="text" name="search" value="<%= filters.search %>"
+                 placeholder="Search orders, SKU, or product"
+                 class="form-input form-input-compact"
+                 aria-label="Search">
+        </div>
+        <div class="index-filters__field">
+          <select name="status" class="form-select form-select-compact" aria-label="Status">
+            <option value="">All statuses</option>
+            <% statuses.forEach(function(s) { %>
+              <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="index-filters__field">
+          <select name="location" class="form-select form-select-compact" aria-label="Location">
+            <option value="">All locations</option>
+            <% locations.filter(l => l.enabled).forEach(function(loc) { %>
+              <option value="<%= loc.id %>" <%= filters.location == loc.id ? 'selected' : '' %>><%= loc.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="index-filters__actions">
+          <button type="submit" class="btn-primary btn-compact">Apply</button>
+          <% if (hasFilters) { %>
+            <a href="/dashboard" class="btn-plain">Reset</a>
+          <% } %>
+        </div>
+      </div>
+    </form>
+
+    <% const priorityOptions = typeof priorities !== 'undefined' ? priorities : ['Low', 'Normal', 'High', 'Urgent']; %>
+    <div id="bulk-toolbar" class="bulk-toolbar hidden" role="region" aria-label="Bulk actions">
+      <div class="bulk-toolbar-inner">
+        <div class="bulk-toolbar-meta">
+          <p class="bulk-toolbar-count"><span id="bulk-selected-count">0</span> selected</p>
+          <button type="button" id="bulk-clear-btn" class="bulk-toolbar-clear">Clear selection</button>
+        </div>
+        <div class="bulk-toolbar-actions">
+          <div class="bulk-action-group">
+            <span class="bulk-action-label">Status:</span>
+            <% statuses.forEach(function(s) { %>
+              <button type="button" class="bulk-action-btn" data-bulk-action="status" data-bulk-value="<%= s %>"><%= s %></button>
+            <% }); %>
+          </div>
+          <div class="bulk-action-group">
+            <span class="bulk-action-label">Priority:</span>
+            <% priorityOptions.forEach(function(p) { %>
+              <button type="button" class="bulk-action-btn" data-bulk-action="priority" data-bulk-value="<%= p %>"><%= p %></button>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <% if (rows.length === 0) { %>
+      <%- include('partials/emptyState', {
+        heading: hasFilters ? 'No orders match your filters' : 'No production orders yet',
+        message: hasFilters
+          ? 'Try clearing filters or broadening your search.'
+          : 'Sync orders from Shopify to import production items.',
+        actionUrl: hasFilters ? '/dashboard' : '/settings',
+        actionLabel: hasFilters ? 'Reset filters' : 'Go to Settings',
+      }) %>
+    <% } else { %>
+      <div class="polaris-card__header" style="border-top: 1px solid var(--p-border-subdued); border-bottom: none; padding-top: 0.5rem;">
+        <p class="polaris-card__subtitle" style="margin:0;"><%= rows.length %> production order<%= rows.length === 1 ? '' : 's' %></p>
+      </div>
+      <div class="polaris-card__body polaris-card__body--flush overflow-x-auto">
+        <table class="data-table data-table-compact min-w-[880px]" id="dashboard-table">
+          <thead>
+            <tr>
+              <th class="cell-checkbox">
+                <input type="checkbox" id="bulk-select-all" class="bulk-checkbox"
+                       aria-label="Select all visible production orders" title="Select all visible orders">
+              </th>
+              <th>Date</th>
+              <th>Order</th>
+              <th class="cell-products">Products</th>
+              <th>Location</th>
+              <th>Priority</th>
+              <th>Due</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% rows.forEach(function(row) {
+                 const orderId = row.id || row.production_order_id;
+                 const orderItems = Array.isArray(row.items) ? row.items : [];
+               %>
+              <tr class="table-row-clickable"
+                  data-production-order-id="<%= orderId %>"
+                  onclick="window.location='/orders/<%= orderId %>'">
+                <td class="cell-checkbox" onclick="event.stopPropagation()">
+                  <input type="checkbox" class="bulk-checkbox bulk-order-checkbox"
+                         data-order-id="<%= orderId %>"
+                         aria-label="Select <%= row.order_name %>">
+                </td>
+                <td class="cell-date"><%= row.order_date ? row.order_date.slice(0, 10) : '—' %></td>
+                <td class="cell-order">
+                  <a href="/orders/<%= orderId %>" class="order-link" onclick="event.stopPropagation()"><%= row.order_name %></a>
+                  <% if (row.customer_name) { %>
+                    <span class="dashboard-order-customer" title="<%= row.customer_name %>"><%= row.customer_name %></span>
+                  <% } %>
+                </td>
+                <td class="cell-products" onclick="event.stopPropagation()">
+                  <%- include('partials/dashboardProducts', { orderItems: orderItems, maxVisible: 3 }) %>
+                </td>
+                <td class="cell-date"><%= row.location_name %></td>
+                <td class="cell-badge"><%- include('partials/priorityBadge', { priority: row.priority }) %></td>
+                <td class="cell-due" onclick="event.stopPropagation()">
+                  <div class="due-inline-wrap">
+                    <input type="date" class="form-input due-date-input due-date-input-inline"
+                           value="<%= row.due_date ? row.due_date.slice(0, 10) : '' %>"
+                           data-order-id="<%= orderId %>"
+                           data-current-due="<%= row.due_date ? row.due_date.slice(0, 10) : '' %>"
+                           aria-label="Due date for <%= row.order_name %>">
+                    <span class="due-inline-badge" data-due-badge-for="<%= orderId %>">
+                      <%- include('partials/dueDateBadge', { dueDate: row.due_date, compactMode: true }) %>
+                    </span>
+                  </div>
+                </td>
+                <td class="cell-badge"><%- include('partials/statusBadge', { status: row.status }) %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>

@@ -1,0 +1,22 @@
+<% const dateVal = typeof dueDate !== 'undefined' ? dueDate : null; %>
+<% const displayDate = dateVal ? String(dateVal).slice(0, 10) : null; %>
+<%
+  let state = 'none';
+  if (displayDate) {
+    const now = new Date();
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    if (displayDate === today) state = 'today';
+    else if (displayDate < today) state = 'overdue';
+    else state = 'future';
+  }
+  const compact = typeof compactMode !== 'undefined' && compactMode;
+%>
+<% if (state === 'none') { %>
+  <span class="due-badge due-badge-none<%= compact ? ' due-badge-compact' : '' %>">No due date</span>
+<% } else if (state === 'today') { %>
+  <span class="due-badge due-badge-today<%= compact ? ' due-badge-compact' : '' %>" title="<%= displayDate %>">Due today</span>
+<% } else if (state === 'overdue') { %>
+  <span class="due-badge due-badge-overdue<%= compact ? ' due-badge-compact' : '' %>" title="<%= displayDate %>">Overdue · <%= displayDate %></span>
+<% } else { %>
+  <span class="due-date-future<%= compact ? ' due-date-future-compact' : '' %>"><%= displayDate %></span>
+<% } %>

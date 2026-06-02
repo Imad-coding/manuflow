@@ -1,0 +1,45 @@
+<aside class="w-full md:w-60 lg:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-200/80 shrink-0 md:flex md:flex-col md:min-h-screen">
+  <div class="px-4 py-4 border-b border-slate-100">
+    <a href="/dashboard" class="flex items-center gap-3 group">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-600 to-brand-700 flex items-center justify-center text-white font-bold text-sm shadow-sm shadow-brand-600/25 group-hover:shadow-md transition-shadow">
+        M
+      </div>
+      <div>
+        <span class="font-semibold text-slate-900 tracking-tight block leading-tight text-[15px]">ManuFlow</span>
+        <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Production OS</span>
+      </div>
+    </a>
+  </div>
+  <nav class="p-2.5 flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible md:flex-1">
+    <a href="/dashboard"
+       class="nav-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all <%= activePage === 'dashboard' ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' %>">
+      <%- include('icons', { icon: 'dashboard', cls: activePage === 'dashboard' ? 'w-[18px] h-[18px] text-brand-600' : 'w-[18px] h-[18px] text-slate-400' }) %>
+      Dashboard
+    </a>
+    <a href="/production-board"
+       class="nav-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all <%= activePage === 'board' ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' %>">
+      <%- include('icons', { icon: 'board', cls: activePage === 'board' ? 'w-[18px] h-[18px] text-brand-600' : 'w-[18px] h-[18px] text-slate-400' }) %>
+      Production Board
+    </a>
+    <a href="/settings"
+       class="nav-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all <%= activePage === 'settings' ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' %>">
+      <%- include('icons', { icon: 'settings', cls: activePage === 'settings' ? 'w-[18px] h-[18px] text-brand-600' : 'w-[18px] h-[18px] text-slate-400' }) %>
+      Settings
+    </a>
+  </nav>
+  <div class="hidden md:block px-3 py-3 mt-auto border-t border-slate-100">
+    <div class="workspace-card rounded-lg bg-slate-50/80 ring-1 ring-slate-200/70 p-3">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-slate-900 truncate">Demo Store</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Manufacturing workspace</p>
+        </div>
+        <% if (typeof shopifyConnected !== 'undefined' && shopifyConnected) { %>
+          <span class="shrink-0 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md ring-1 ring-emerald-200/80">Live</span>
+        <% } else { %>
+          <span class="shrink-0 text-[10px] font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded-md ring-1 ring-slate-200/80">Demo</span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</aside>

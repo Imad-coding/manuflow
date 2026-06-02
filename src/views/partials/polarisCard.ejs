@@ -1,0 +1,18 @@
+<section class="polaris-card <%= typeof cardClass !== 'undefined' ? cardClass : '' %>">
+  <% if (typeof cardTitle !== 'undefined' && cardTitle) { %>
+    <div class="polaris-card__header">
+      <div class="polaris-card__heading">
+        <h2 class="polaris-card__title"><%= cardTitle %></h2>
+        <% if (typeof cardSubtitle !== 'undefined' && cardSubtitle) { %>
+          <p class="polaris-card__subtitle"><%= cardSubtitle %></p>
+        <% } %>
+      </div>
+      <% if (typeof cardHeaderActions !== 'undefined' && cardHeaderActions) { %>
+        <div class="polaris-card__header-actions"><%- cardHeaderActions %></div>
+      <% } %>
+    </div>
+  <% } %>
+  <div class="polaris-card__body <%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>">
+    <%- typeof cardBody !== 'undefined' ? cardBody : '' %>
+  </div>
+</section>

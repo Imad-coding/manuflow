@@ -1,0 +1,175 @@
+<div class="page-order-detail page-stack">
+  <header class="page-header">
+    <div class="page-header__text">
+      <nav class="page-breadcrumbs" aria-label="Breadcrumb">
+        <a href="/dashboard" class="page-breadcrumbs__link">Production orders</a>
+        <span class="page-breadcrumbs__sep" aria-hidden="true">/</span>
+        <span class="page-breadcrumbs__current"><%= order.order_name %></span>
+      </nav>
+      <h1 class="page-header__title"><%= order.order_name %></h1>
+      <p class="page-header__subtitle"><%= order.customer_name || 'Production order' %></p>
+    </div>
+    <div class="page-header__actions">
+      <a href="/orders/<%= order.id %>/print" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-compact">Print sheet</a>
+      <a href="/dashboard" class="btn-secondary btn-compact">Back</a>
+    </div>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-2 -mt-2 mb-1" id="header-badges">
+    <%- include('partials/statusBadge', { status: order.status }) %>
+    <%- include('partials/priorityBadge', { priority: order.priority }) %>
+    <% if (order.due_date) { %>
+      <%- include('partials/dueDateBadge', { dueDate: order.due_date, compactMode: true }) %>
+    <% } %>
+  </div>
+
+  <div class="order-detail-layout">
+    <div class="order-detail-main">
+      <section class="polaris-card">
+        <div class="polaris-card__header">
+          <h2 class="polaris-card__title">Order details</h2>
+        </div>
+        <div class="polaris-card__body">
+          <dl class="order-meta-grid">
+            <div><dt>Order date</dt><dd><%= order.order_date ? order.order_date.slice(0, 10) : '—' %></dd></div>
+            <div><dt>Fulfillment location</dt><dd><%= order.location_name || 'Unassigned' %></dd></div>
+            <div><dt>Shopify order</dt><dd class="code-inline truncate block max-w-full" title="<%= order.shopify_order_id %>"><%= order.shopify_order_id %></dd></div>
+            <div><dt>Production order ID</dt><dd>#<%= order.id %></dd></div>
+            <div><dt>Last status change</dt><dd><%= order.production_status_updated_at ? order.production_status_updated_at.slice(0, 16).replace('T', ' ') : '—' %></dd></div>
+            <div><dt>Line items</dt><dd><%= order.items.length %></dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="polaris-card">
+        <div class="polaris-card__header">
+          <div class="polaris-card__heading">
+            <h2 class="polaris-card__title">Production items</h2>
+            <p class="polaris-card__subtitle">Components to manufacture for this order</p>
+          </div>
+          <span class="badge badge-tone-neutral"><%= order.items.length %></span>
+        </div>
+        <% if (order.items.length === 0) { %>
+          <%- include('partials/emptyState', {
+            heading: 'No production items',
+            message: 'This production order has no line items yet.',
+            actionUrl: '/dashboard',
+            actionLabel: 'Back to dashboard',
+          }) %>
+        <% } else { %>
+          <div class="polaris-card__body polaris-card__body--flush">
+            <% order.items.forEach(function(item, index) { %>
+              <div class="job-line-item">
+                <div class="flex gap-4">
+                  <div class="shrink-0">
+                    <% if (item.image_url) { %>
+                      <img src="<%= item.image_url.replace('/80/80', '/200/200') %>" alt="" class="job-line-item-img" loading="lazy">
+                    <% } else { %>
+                      <div class="job-line-item-img job-line-item-img-empty">
+                        <svg class="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.25" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                      </div>
+                    <% } %>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <h3 class="font-semibold text-[0.9375rem] leading-snug" style="color:var(--p-text)"><%= item.title %></h3>
+                      <span class="job-qty-badge">Qty <%= item.quantity %></span>
+                    </div>
+                    <dl class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div class="job-line-field"><dt>SKU</dt><dd class="code-inline"><%= item.sku || '—' %></dd></div>
+                      <div class="job-line-field"><dt>Variant</dt><dd><%= item.variant_title || '—' %></dd></div>
+                    </dl>
+                    <% if (item.options && item.options.length) { %>
+                      <div class="mt-2 flex flex-wrap gap-1">
+                        <% item.options.forEach(function(opt) { %>
+                          <span class="job-option-badge"><%= opt.name %>: <%= opt.value %></span>
+                        <% }); %>
+                      </div>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </section>
+    </div>
+
+    <aside class="order-detail-aside">
+      <section class="polaris-card">
+        <div class="polaris-card__header">
+          <h2 class="polaris-card__title">Workflow</h2>
+          <p class="polaris-card__subtitle">Status, priority, and due date</p>
+        </div>
+        <div class="polaris-card__body space-y-4" style="display:flex;flex-direction:column;gap:1rem;">
+          <div>
+            <label for="status-select" class="form-label">Production status</label>
+            <select id="status-select"
+                    data-action="order-status-select"
+                    data-order-id="<%= order.id %>"
+                    data-current-status="<%= order.status %>"
+                    class="form-select form-select-compact">
+              <% statuses.forEach(function(s) { %>
+                <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= s %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
+            <label for="priority-select" class="form-label">Priority</label>
+            <select id="priority-select"
+                    data-order-id="<%= order.id %>"
+                    data-current-priority="<%= order.priority %>"
+                    class="form-select form-select-compact">
+              <% priorities.forEach(function(p) { %>
+                <option value="<%= p %>" <%= order.priority === p ? 'selected' : '' %>><%= p %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
+            <label for="due-date-input" class="form-label">Due date</label>
+            <div class="flex flex-wrap gap-2">
+              <input type="date" id="due-date-input"
+                     value="<%= order.due_date ? order.due_date.slice(0, 10) : '' %>"
+                     data-current-due="<%= order.due_date ? order.due_date.slice(0, 10) : '' %>"
+                     class="form-input form-input-compact flex-1 min-w-[9rem]">
+              <button type="button" data-action="save-due-date" data-order-id="<%= order.id %>" class="btn-primary btn-compact">Save</button>
+              <% if (order.due_date) { %>
+                <button type="button" data-action="clear-due-date" data-order-id="<%= order.id %>" class="btn-secondary btn-compact">Clear</button>
+              <% } %>
+            </div>
+            <p class="text-[0.75rem] mt-1" style="color:var(--p-text-subdued)">Leave empty and save to clear.</p>
+          </div>
+          <p class="text-[0.75rem]" style="color:var(--p-text-subdued)">Changes save immediately and update the production board.</p>
+        </div>
+      </section>
+
+      <section class="polaris-card">
+        <div class="polaris-card__header">
+          <h2 class="polaris-card__title">Internal notes</h2>
+          <p class="polaris-card__subtitle">Team-only notes for this order</p>
+        </div>
+        <div class="polaris-card__body">
+          <textarea id="order-notes"
+                    data-order-id="<%= order.id %>"
+                    rows="5"
+                    placeholder="Material notes, assembly instructions..."
+                    class="form-input resize-none w-full"><%= order.internal_notes || '' %></textarea>
+          <button type="button" data-action="save-notes" data-order-id="<%= order.id %>" class="btn-primary w-full mt-2">
+            Save notes
+          </button>
+        </div>
+      </section>
+
+      <section class="polaris-card">
+        <div class="polaris-card__header">
+          <h2 class="polaris-card__title">Quick links</h2>
+        </div>
+        <div class="polaris-card__body polaris-card__body--compact" style="padding-top:0.25rem;padding-bottom:0.25rem;">
+          <a href="/orders/<%= order.id %>/print" target="_blank" rel="noopener noreferrer" class="job-quick-link">Print production sheet</a>
+          <a href="/production-board" class="job-quick-link">View on production board</a>
+          <a href="/dashboard" class="job-quick-link">All production orders</a>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
