@@ -1,0 +1,51 @@
+<% const rows = typeof orders !== 'undefined' ? orders : []; %>
+<% const showCompletedColumn = typeof showCompletedAt !== 'undefined' && showCompletedAt; %>
+<% if (!rows.length) { %>
+  <%- include('emptyState', {
+    heading: emptyHeading || 'No orders',
+    message: emptyMessage || 'Nothing to show for this report.',
+  }) %>
+<% } else { %>
+  <div class="polaris-card__body polaris-card__body--flush overflow-x-auto">
+    <table class="data-table data-table-compact min-w-[880px]">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Customer</th>
+          <th>Due date</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Location</th>
+          <th class="cell-products">Products</th>
+          <% if (showCompletedColumn) { %><th>Completed</th><% } %>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(function(row) { %>
+          <tr>
+            <td class="cell-order">
+              <a href="/orders/<%= row.id %>" class="order-link"><%= row.order_name %></a>
+            </td>
+            <td><%= row.customer_name || '—' %></td>
+            <td class="cell-date"><%= row.due_date ? row.due_date.slice(0, 10) : '—' %></td>
+            <td class="cell-badge"><%- include('priorityBadge', { priority: row.priority }) %></td>
+            <td class="cell-badge"><%- include('statusBadge', { status: row.status }) %></td>
+            <td><%= row.location_name || '—' %></td>
+            <td class="cell-products text-xs" title="<%= row.products_summary || '' %>">
+              <%= row.products_summary || '—' %>
+            </td>
+            <% if (showCompletedColumn) { %>
+              <td class="cell-date">
+                <%= row.production_status_updated_at ? row.production_status_updated_at.slice(0, 16).replace('T', ' ') : '—' %>
+              </td>
+            <% } %>
+            <td class="cell-action">
+              <a href="/orders/<%= row.id %>" class="btn-plain btn-compact">View</a>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

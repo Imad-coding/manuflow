@@ -16,6 +16,7 @@ const CSV_HEADERS = [
   'Assigned Location',
   'Production Status',
   'Priority',
+  'Archived',
   'Internal Notes',
 ];
 
@@ -36,12 +37,13 @@ function rowToCsvValues(row) {
     row.location_name || '',
     row.status || '',
     row.priority || '',
+    row.archived ? 'Yes' : 'No',
     row.internal_notes || '',
   ];
 }
 
 router.get('/export/production-orders.csv', (req, res) => {
-  const { status, location, search, priority } = req.query;
+  const { status, location, search, priority, archive } = req.query;
   const shopId = getCurrentShopId();
 
   const rows = listOrdersForDashboard({
@@ -50,6 +52,7 @@ router.get('/export/production-orders.csv', (req, res) => {
     locationId: location ? Number(location) : undefined,
     search: search || undefined,
     priority: priority || undefined,
+    archive: archive || undefined,
   });
 
   const csv = buildCsv(CSV_HEADERS, rows.map(rowToCsvValues));

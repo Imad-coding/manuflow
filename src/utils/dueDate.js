@@ -52,8 +52,82 @@ function getDueDateState(dueDate) {
   return 'future';
 }
 
+function parseOrderDateToLocalDate(orderDate) {
+  const str = String(orderDate || '').slice(0, 10);
+  if (!DATE_PATTERN.test(str)) {
+    return new Date();
+  }
+
+  const [year, month, day] = str.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isWeekend(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function addCalendarDays(startDate, days) {
+  const result = new Date(startDate);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function bumpOffWeekend(date) {
+  const result = new Date(date);
+  while (isWeekend(result)) {
+    result.setDate(result.getDate() + 1);
+  }
+  return result;
+}
+
+function addBusinessDays(startDate, businessDays) {
+  const result = new Date(startDate);
+  let added = 0;
+  const target = Math.max(0, Number(businessDays) || 0);
+
+  while (added < target) {
+    result.setDate(result.getDate() + 1);
+    if (!isWeekend(result)) {
+      added += 1;
+    }
+  }
+
+  return result;
+}
+
+function computeDueDateFromOrderDate(orderDate, settings = {}) {
+  const leadDays = Math.max(0, Math.min(365, Number(settings.default_lead_time_days) || 0));
+  const start = parseOrderDateToLocalDate(orderDate);
+  let due;
+
+  if (settings.use_business_days) {
+    due = addBusinessDays(start, leadDays);
+    if (settings.skip_weekends && isWeekend(due)) {
+      due = bumpOffWeekend(due);
+    }
+  } else {
+    due = addCalendarDays(start, leadDays);
+    if (settings.skip_weekends) {
+      due = bumpOffWeekend(due);
+    }
+  }
+
+  return formatDateString(due);
+}
+
 module.exports = {
   parseDueDateInput,
   getDueDateState,
   todayDateString,
+  parseOrderDateToLocalDate,
+  formatDateString,
+  computeDueDateFromOrderDate,
 };

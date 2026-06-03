@@ -71,6 +71,8 @@ function initSchema(database) {
       due_date TEXT,
       internal_notes TEXT,
       production_status_updated_at TEXT,
+      archived INTEGER NOT NULL DEFAULT 0,
+      archived_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(shop_id, shopify_order_id, assigned_location_id)
@@ -114,6 +116,63 @@ function initSchema(database) {
 
     CREATE INDEX IF NOT EXISTS idx_sync_logs_shop_id ON sync_logs(shop_id);
     CREATE INDEX IF NOT EXISTS idx_sync_logs_created_at ON sync_logs(created_at);
+
+    CREATE TABLE IF NOT EXISTS webhook_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER REFERENCES shops(id) ON DELETE SET NULL,
+      webhook_id TEXT UNIQUE,
+      topic TEXT,
+      shop_domain TEXT,
+      status TEXT,
+      message TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_webhook_events_created_at ON webhook_events(created_at);
+    CREATE INDEX IF NOT EXISTS idx_webhook_events_shop_id ON webhook_events(shop_id);
+
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER REFERENCES shops(id) ON DELETE CASCADE,
+      production_order_id INTEGER REFERENCES production_orders(id) ON DELETE CASCADE,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_activity_logs_production_order_id ON activity_logs(production_order_id);
+    CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
+
+    CREATE TABLE IF NOT EXISTS due_date_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL UNIQUE REFERENCES shops(id) ON DELETE CASCADE,
+      auto_assign_enabled INTEGER NOT NULL DEFAULT 1,
+      default_lead_time_days INTEGER NOT NULL DEFAULT 3,
+      use_business_days INTEGER NOT NULL DEFAULT 1,
+      skip_weekends INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_due_date_settings_shop_id ON due_date_settings(shop_id);
+
+    CREATE TABLE IF NOT EXISTS production_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      condition_type TEXT NOT NULL,
+      condition_operator TEXT NOT NULL,
+      condition_value TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      action_value TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_production_rules_shop_id ON production_rules(shop_id);
+    CREATE INDEX IF NOT EXISTS idx_production_rules_enabled ON production_rules(enabled);
   `);
 
   migrateSchema(database);
@@ -147,6 +206,69 @@ function migrateSchema(database) {
       ALTER TABLE sync_logs ADD COLUMN discovered_locations_synced INTEGER NOT NULL DEFAULT 0
     `);
   }
+
+  const webhookColumns = database.prepare('PRAGMA table_info(webhook_events)').all();
+  const webhookColumnNames = new Set(webhookColumns.map((col) => col.name));
+
+  if (!webhookColumnNames.has('hmac_valid')) {
+    database.exec(`ALTER TABLE webhook_events ADD COLUMN hmac_valid INTEGER`);
+  }
+  if (!webhookColumnNames.has('sync_triggered')) {
+    database.exec(`ALTER TABLE webhook_events ADD COLUMN sync_triggered INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!webhookColumnNames.has('sync_completed')) {
+    database.exec(`ALTER TABLE webhook_events ADD COLUMN sync_completed INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!webhookColumnNames.has('route')) {
+    database.exec(`ALTER TABLE webhook_events ADD COLUMN route TEXT`);
+  }
+  if (!webhookColumnNames.has('matched_secret')) {
+    database.exec(`ALTER TABLE webhook_events ADD COLUMN matched_secret TEXT`);
+  }
+
+  const productionOrderColumns = database.prepare('PRAGMA table_info(production_orders)').all();
+  const productionOrderColumnNames = new Set(productionOrderColumns.map((col) => col.name));
+
+  if (!productionOrderColumnNames.has('archived')) {
+    database.exec(`ALTER TABLE production_orders ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!productionOrderColumnNames.has('archived_at')) {
+    database.exec(`ALTER TABLE production_orders ADD COLUMN archived_at TEXT`);
+  }
+
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_production_orders_archived ON production_orders(archived)`);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS due_date_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL UNIQUE REFERENCES shops(id) ON DELETE CASCADE,
+      auto_assign_enabled INTEGER NOT NULL DEFAULT 1,
+      default_lead_time_days INTEGER NOT NULL DEFAULT 3,
+      use_business_days INTEGER NOT NULL DEFAULT 1,
+      skip_weekends INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_due_date_settings_shop_id ON due_date_settings(shop_id)`);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS production_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      condition_type TEXT NOT NULL,
+      condition_operator TEXT NOT NULL,
+      condition_value TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      action_value TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_production_rules_shop_id ON production_rules(shop_id)`);
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_production_rules_enabled ON production_rules(enabled)`);
 }
 
 function seedDemoData(database) {

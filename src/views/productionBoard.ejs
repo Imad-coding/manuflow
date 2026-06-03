@@ -1,8 +1,13 @@
 <div class="page-production-board page-stack">
   <%- include('partials/pageHeader', {
     pageTitle: 'Production board',
-    pageSubtitle: 'Manage production status across workflow columns.',
+    pageSubtitle: 'Manage production status across workflow columns. Archived orders are not shown.',
   }) %>
+
+  <div id="live-updates-banner" class="live-updates-banner hidden" role="status">
+    <span class="live-updates-banner__text">New updates available</span>
+    <button type="button" id="live-updates-refresh" class="btn-secondary btn-compact">Refresh view</button>
+  </div>
 
   <section class="polaris-card">
     <form method="GET" action="/production-board" class="index-filters">
@@ -55,7 +60,7 @@
                 <div class="kanban-empty"><p>No orders</p></div>
               <% } else { %>
                 <% columnCards.forEach(function(card) { %>
-                  <article class="kanban-card">
+                  <article class="kanban-card" data-order-card-for="<%= card.id %>">
                     <a href="/orders/<%= card.id %>" class="kanban-card-link">
                       <div class="kanban-card-header">
                         <span class="order-link"><%= card.order_name %></span>

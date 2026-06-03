@@ -1,0 +1,113 @@
+<% const o = order; %>
+<% const sheetPrintedAt = typeof printedAt !== 'undefined' ? printedAt : new Date().toISOString(); %>
+<% const printedLabel = sheetPrintedAt.slice(0, 16).replace('T', ' '); %>
+<% const orderDate = o.order_date ? o.order_date.slice(0, 10) : '—'; %>
+<% const dueDate = o.due_date || '—'; %>
+<% const locationName = o.location_name || 'Unassigned / Unknown'; %>
+<% const customerName = o.customer_name || '—'; %>
+<% const notes = (o.internal_notes || '').trim(); %>
+
+<header class="brand">
+  <div>
+    <h1>FulfillForge</h1>
+    <p>Production Sheet</p>
+  </div>
+  <div style="text-align: right;">
+    <p style="font-size: 1.25rem; font-weight: 700; margin: 0;"><%= o.order_name %></p>
+    <p style="margin: 0.2rem 0 0;">Job #<%= o.id %></p>
+  </div>
+</header>
+
+<p class="doc-title">Print Job Sheet</p>
+
+<dl class="meta-grid">
+  <div class="meta-item">
+    <dt>Order number</dt>
+    <dd><%= o.order_name %></dd>
+  </div>
+  <div class="meta-item">
+    <dt>Customer</dt>
+    <dd><%= customerName %></dd>
+  </div>
+  <div class="meta-item">
+    <dt>Order date</dt>
+    <dd><%= orderDate %></dd>
+  </div>
+  <div class="meta-item">
+    <dt>Due date</dt>
+    <dd><%= dueDate %></dd>
+  </div>
+  <div class="meta-item">
+    <dt>Priority</dt>
+    <dd><%= o.priority || '—' %></dd>
+  </div>
+  <div class="meta-item">
+    <dt>Production status</dt>
+    <dd><%= o.status || '—' %></dd>
+  </div>
+  <div class="meta-item" style="grid-column: span 2;">
+    <dt>Assigned location</dt>
+    <dd><%= locationName %></dd>
+  </div>
+</dl>
+
+<section class="items-section">
+  <h2>Production items (<%= (o.items && o.items.length) || 0 %>)</h2>
+
+  <% if (!o.items || o.items.length === 0) { %>
+    <p style="color: #444; margin: 0;">No line items on this production order.</p>
+  <% } else { %>
+    <% o.items.forEach(function(item, index) { %>
+      <article class="line-item">
+        <% if (item.image_url) { %>
+          <img src="<%= item.image_url %>" alt="" class="line-img" loading="eager">
+        <% } else { %>
+          <div class="line-img line-img-empty">No image</div>
+        <% } %>
+        <div class="line-body">
+          <h3 class="line-title"><%= item.title || 'Untitled item' %></h3>
+          <dl class="line-meta">
+            <div>
+              <dt>SKU</dt>
+              <dd><%= item.sku || '—' %></dd>
+            </div>
+            <div>
+              <dt>Quantity</dt>
+              <dd><%= item.quantity != null ? item.quantity : '—' %></dd>
+            </div>
+            <div>
+              <dt>Variant</dt>
+              <dd><%= item.variant_title || '—' %></dd>
+            </div>
+            <div>
+              <dt>Item</dt>
+              <dd><%= index + 1 %> of <%= o.items.length %></dd>
+            </div>
+          </dl>
+          <% if (item.options && item.options.length) { %>
+            <div class="options">
+              <strong>Options:</strong>
+              <% item.options.forEach(function(opt) { %>
+                <span><%= opt.name || 'Option' %>: <%= opt.value || '—' %></span>
+              <% }); %>
+            </div>
+          <% } %>
+        </div>
+      </article>
+    <% }); %>
+  <% } %>
+</section>
+
+<section class="notes">
+  <h2>Internal notes</h2>
+  <% if (notes) { %>
+    <p><%= notes %></p>
+  <% } else { %>
+    <p style="color: #666;">No internal notes.</p>
+  <% } %>
+</section>
+
+<footer class="footer">
+  <span>FulfillForge — Production Sheet</span>
+  <span>Printed at <%= printedLabel %></span>
+</footer>

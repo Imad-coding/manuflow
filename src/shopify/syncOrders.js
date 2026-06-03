@@ -6,7 +6,7 @@ const {
   validateCredentials,
   ShopifySyncError,
 } = require('./client');
-const { LOCATIONS_QUERY, ORDERS_QUERY } = require('./queries');
+const { LOCATIONS_QUERY, ORDERS_QUERY, ORDER_BY_ID_QUERY } = require('./queries');
 const {
   upsertLocationFromShopifyQuery,
   upsertLocationFromAssignedLocation,
@@ -19,6 +19,14 @@ const { upsertFromSync } = require('../services/productionOrders');
 
 const NO_ORDERS_WARNING =
   'No open Shopify orders found. Check order status, scopes, or test store data.';
+
+let syncLock = Promise.resolve();
+
+function withSyncLock(fn) {
+  const run = syncLock.then(() => fn());
+  syncLock = run.catch(() => {});
+  return run;
+}
 
 async function fetchAllLocations() {
   const data = await shopifyGraphQL(LOCATIONS_QUERY);
@@ -149,7 +157,93 @@ function finishSync(shopId, result) {
   return result;
 }
 
-async function syncOrders() {
+async function fetchOrderById(orderGid) {
+  const data = await shopifyGraphQL(ORDER_BY_ID_QUERY, { id: orderGid });
+  return data.order || null;
+}
+
+async function syncSingleOrder(shopifyOrderGid) {
+  return withSyncLock(async () => {
+    const creds = validateCredentials();
+    if (!creds.ok) {
+      return failSync(creds.code, creds.message);
+    }
+
+    let shopId = null;
+
+    try {
+      shopId = ensureConnectedShop({ updateCredentials: true });
+      if (!shopId) {
+        return failSync('MISSING_CREDENTIALS', 'Shopify credentials are not configured.');
+      }
+
+      const order = await fetchOrderById(shopifyOrderGid);
+      if (!order) {
+        return finishSync(shopId, {
+          ok: true,
+          code: 'ORDER_NOT_FOUND',
+          message: 'Shopify order not found or no longer accessible.',
+          summary: {
+            shopifyOrders: 0,
+            productionOrdersCreated: 0,
+            productionOrdersUpdated: 0,
+            itemsSynced: 0,
+            locationsFromQuery: 0,
+            locationsDiscoveredFromFulfillmentOrders: 0,
+            locationsSynced: countLocationsForShop(shopId),
+          },
+        });
+      }
+
+      const knownQueryLocationIds = new Set();
+      syncLocationsFromOrders(shopId, [order], knownQueryLocationIds);
+      const locationMap = getLocationMap(shopId);
+      const payloads = transformOrderToPayloads(order, locationMap);
+
+      if (payloads.length === 0) {
+        return finishSync(shopId, {
+          ok: true,
+          code: 'NO_PRODUCTION_ORDERS',
+          message: `Order ${order.name} has no fulfillable line items at known locations.`,
+          summary: {
+            shopifyOrders: 1,
+            productionOrdersCreated: 0,
+            productionOrdersUpdated: 0,
+            itemsSynced: 0,
+            locationsFromQuery: 0,
+            locationsDiscoveredFromFulfillmentOrders: 0,
+            locationsSynced: countLocationsForShop(shopId),
+          },
+        });
+      }
+
+      const stats = upsertFromSync(shopId, payloads);
+
+      return finishSync(shopId, {
+        ok: true,
+        code: 'SYNC_OK',
+        message: `Synced ${order.name} — ${stats.productionOrdersCreated} new and ${stats.productionOrdersUpdated} updated production order(s).`,
+        summary: {
+          shopifyOrders: 1,
+          productionOrdersCreated: stats.productionOrdersCreated,
+          productionOrdersUpdated: stats.productionOrdersUpdated,
+          itemsSynced: stats.itemsSynced,
+          locationsFromQuery: 0,
+          locationsDiscoveredFromFulfillmentOrders: 0,
+          locationsSynced: countLocationsForShop(shopId),
+        },
+      });
+    } catch (err) {
+      if (err instanceof ShopifySyncError) {
+        return finishSync(shopId, failSync(err.code, err.message, err.details));
+      }
+      return finishSync(shopId, failSync('UNKNOWN_ERROR', err.message || 'Failed to sync order from Shopify.'));
+    }
+  });
+}
+
+async function syncOrders(options = {}) {
+  return withSyncLock(async () => {
   const creds = validateCredentials();
   if (!creds.ok) {
     return finishSync(null, failSync(creds.code, creds.message));
@@ -237,9 +331,11 @@ async function syncOrders() {
     }
     return finishSync(shopId, failSync('UNKNOWN_ERROR', err.message || 'Failed to sync orders from Shopify.'));
   }
+  });
 }
 
 module.exports = {
   syncOrders,
+  syncSingleOrder,
   NO_ORDERS_WARNING,
 };

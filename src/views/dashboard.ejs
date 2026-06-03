@@ -15,6 +15,11 @@
     </div>
   </header>
 
+  <div id="live-updates-banner" class="live-updates-banner hidden" role="status">
+    <span class="live-updates-banner__text">New updates available</span>
+    <button type="button" id="live-updates-refresh" class="btn-secondary btn-compact">Refresh view</button>
+  </div>
+
   <div class="metric-row">
     <% const cards = [
       { key: 'newOrders', label: 'New', filter: 'New' },
@@ -59,6 +64,13 @@
             <% }); %>
           </select>
         </div>
+        <div class="index-filters__field">
+          <select name="archive" class="form-select form-select-compact" aria-label="Archive filter">
+            <option value="active" <%= filters.archive === 'active' ? 'selected' : '' %>>Active</option>
+            <option value="archived" <%= filters.archive === 'archived' ? 'selected' : '' %>>Archived</option>
+            <option value="all" <%= filters.archive === 'all' ? 'selected' : '' %>>All</option>
+          </select>
+        </div>
         <div class="index-filters__actions">
           <button type="submit" class="btn-primary btn-compact">Apply</button>
           <% if (hasFilters) { %>
@@ -69,6 +81,8 @@
     </form>
 
     <% const priorityOptions = typeof priorities !== 'undefined' ? priorities : ['Low', 'Normal', 'High', 'Urgent']; %>
+    <% const showArchiveBulk = filters.archive === 'active' || filters.archive === 'all'; %>
+    <% const showUnarchiveBulk = filters.archive === 'archived' || filters.archive === 'all'; %>
     <div id="bulk-toolbar" class="bulk-toolbar hidden" role="region" aria-label="Bulk actions">
       <div class="bulk-toolbar-inner">
         <div class="bulk-toolbar-meta">
@@ -87,6 +101,19 @@
             <% priorityOptions.forEach(function(p) { %>
               <button type="button" class="bulk-action-btn" data-bulk-action="priority" data-bulk-value="<%= p %>"><%= p %></button>
             <% }); %>
+          </div>
+          <% if (showArchiveBulk) { %>
+          <div class="bulk-action-group">
+            <button type="button" class="bulk-action-btn bulk-action-btn--emphasis" data-bulk-action="archive" data-bulk-value="true">Archive selected</button>
+          </div>
+          <% } %>
+          <% if (showUnarchiveBulk) { %>
+          <div class="bulk-action-group">
+            <button type="button" class="bulk-action-btn" data-bulk-action="archive" data-bulk-value="false">Unarchive selected</button>
+          </div>
+          <% } %>
+          <div class="bulk-action-group">
+            <button type="button" id="bulk-print-btn" data-action="print-selected-sheets" class="bulk-action-btn">Print selected sheets</button>
           </div>
         </div>
       </div>
@@ -129,6 +156,7 @@
                %>
               <tr class="table-row-clickable"
                   data-production-order-id="<%= orderId %>"
+                  data-order-row-for="<%= orderId %>"
                   onclick="window.location='/orders/<%= orderId %>'">
                 <td class="cell-checkbox" onclick="event.stopPropagation()">
                   <input type="checkbox" class="bulk-checkbox bulk-order-checkbox"
@@ -138,6 +166,9 @@
                 <td class="cell-date"><%= row.order_date ? row.order_date.slice(0, 10) : '—' %></td>
                 <td class="cell-order">
                   <a href="/orders/<%= orderId %>" class="order-link" onclick="event.stopPropagation()"><%= row.order_name %></a>
+                  <% if (row.archived) { %>
+                    <span class="badge badge-tone-neutral dashboard-archived-badge">Archived</span>
+                  <% } %>
                   <% if (row.customer_name) { %>
                     <span class="dashboard-order-customer" title="<%= row.customer_name %>"><%= row.customer_name %></span>
                   <% } %>
@@ -146,7 +177,7 @@
                   <%- include('partials/dashboardProducts', { orderItems: orderItems, maxVisible: 3 }) %>
                 </td>
                 <td class="cell-date"><%= row.location_name %></td>
-                <td class="cell-badge"><%- include('partials/priorityBadge', { priority: row.priority }) %></td>
+                <td class="cell-badge" data-priority-cell-for="<%= orderId %>"><%- include('partials/priorityBadge', { priority: row.priority }) %></td>
                 <td class="cell-due" onclick="event.stopPropagation()">
                   <div class="due-inline-wrap">
                     <input type="date" class="form-input due-date-input due-date-input-inline"
@@ -159,7 +190,7 @@
                     </span>
                   </div>
                 </td>
-                <td class="cell-badge"><%- include('partials/statusBadge', { status: row.status }) %></td>
+                <td class="cell-badge" data-status-cell-for="<%= orderId %>"><%- include('partials/statusBadge', { status: row.status }) %></td>
               </tr>
             <% }); %>
           </tbody>

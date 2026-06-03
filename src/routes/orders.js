@@ -1,10 +1,51 @@
 const express = require('express');
 const { getCurrentShopId } = require('../services/shops');
-const { getOrderById } = require('../services/productionOrders');
+const {
+  getOrderById,
+  parseBatchPrintIds,
+  getOrdersByIds,
+} = require('../services/productionOrders');
+const { listActivityLogsForOrder, createActivityLog } = require('../services/activityLogs');
 const { STATUSES, PRIORITIES } = require('../db');
 const { renderPage, renderStandalone } = require('../utils/render');
 
 const router = express.Router();
+
+router.get('/orders/print-batch', (req, res, next) => {
+  const shopId = getCurrentShopId();
+  const requestedIds = parseBatchPrintIds(req.query.ids);
+  const orders = getOrdersByIds(requestedIds, shopId);
+  const printedAt = new Date().toISOString();
+
+  if (orders.length === 0) {
+    const message = requestedIds.length === 0
+      ? 'No valid production order IDs were provided.'
+      : 'None of the selected production orders were found for your shop.';
+
+    return renderStandalone(res, 'printBatch', {
+      title: 'Batch Print',
+      empty: true,
+      emptyHeading: 'No orders to print',
+      message,
+    }, next, 404);
+  }
+
+  for (const order of orders) {
+    createActivityLog({
+      shopId,
+      productionOrderId: order.id,
+      actor: 'User',
+      action: 'batch_print_sheet_opened',
+      message: 'Production sheet opened in batch print',
+    });
+  }
+
+  renderStandalone(res, 'printBatch', {
+    title: `Batch Print (${orders.length})`,
+    orders,
+    printedAt,
+  }, next);
+});
 
 router.get('/orders/:id/print', (req, res, next) => {
   const order = getOrderById(Number(req.params.id), getCurrentShopId());
@@ -24,7 +65,8 @@ router.get('/orders/:id/print', (req, res, next) => {
   }, next);
 });
 
-router.get('/orders/:id', (req, res, next) => {  const order = getOrderById(Number(req.params.id), getCurrentShopId());
+router.get('/orders/:id', (req, res, next) => {
+  const order = getOrderById(Number(req.params.id), getCurrentShopId());
 
   if (!order) {
     return renderPage(res, 'error', {
@@ -39,8 +81,10 @@ router.get('/orders/:id', (req, res, next) => {  const order = getOrderById(Numb
     title: order.order_name,
     pageTitle: order.order_name,
     pageSubtitle: order.customer_name || 'Production order',
-    activePage: 'dashboard',
+    activePage: 'order',
+    orderId: order.id,
     order,
+    activityLogs: listActivityLogsForOrder(order.id),
     statuses: STATUSES,
     priorities: PRIORITIES,
   }, next);

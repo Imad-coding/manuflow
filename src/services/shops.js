@@ -135,6 +135,12 @@ function clearDemoData() {
   };
 }
 
+function getShopIdByDomain(shopDomain) {
+  if (!shopDomain) return null;
+  const row = getDb().prepare('SELECT id FROM shops WHERE shop_domain = ?').get(shopDomain);
+  return row ? row.id : null;
+}
+
 function getDbSummary() {
   const db = getDb();
   const shops = db.prepare(`
@@ -176,6 +182,7 @@ module.exports = {
   getDemoShopId,
   ensureConnectedShop,
   getCurrentShopId,
+  getShopIdByDomain,
   getCurrentShop,
   getShopCounts,
   getCurrentShopContext,

@@ -33,7 +33,7 @@
   </script>
   <link rel="stylesheet" href="/css/app.css">
 </head>
-<body class="app-body">
+<body class="app-body" data-page="<%= typeof activePage !== 'undefined' ? activePage : '' %>"<% if (typeof orderId !== 'undefined' && orderId) { %> data-order-id="<%= orderId %>"<% } %>>
   <%- include('partials/appNav') %>
   <main class="app-main">
     <div class="app-container">

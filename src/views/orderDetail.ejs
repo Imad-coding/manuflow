@@ -16,11 +16,16 @@
   </header>
 
   <div class="flex flex-wrap items-center gap-2 -mt-2 mb-1" id="header-badges">
-    <%- include('partials/statusBadge', { status: order.status }) %>
-    <%- include('partials/priorityBadge', { priority: order.priority }) %>
-    <% if (order.due_date) { %>
-      <%- include('partials/dueDateBadge', { dueDate: order.due_date, compactMode: true }) %>
-    <% } %>
+    <span data-status-badge-for="<%= order.id %>"><%- include('partials/statusBadge', { status: order.status }) %></span>
+    <span data-priority-badge-for="<%= order.id %>"><%- include('partials/priorityBadge', { priority: order.priority }) %></span>
+    <span id="archived-badge" data-archived-badge-for="<%= order.id %>"<% if (!order.archived) { %> class="hidden"<% } %>>
+      <span class="badge badge-tone-neutral">Archived</span>
+    </span>
+    <span data-due-header-badge-for="<%= order.id %>"<% if (!order.due_date) { %> class="hidden"<% } %>>
+      <% if (order.due_date) { %>
+        <%- include('partials/dueDateBadge', { dueDate: order.due_date, compactMode: true }) %>
+      <% } %>
+    </span>
   </div>
 
   <div class="order-detail-layout">
@@ -140,6 +145,22 @@
             <p class="text-[0.75rem] mt-1" style="color:var(--p-text-subdued)">Leave empty and save to clear.</p>
           </div>
           <p class="text-[0.75rem]" style="color:var(--p-text-subdued)">Changes save immediately and update the production board.</p>
+          <div id="archive-controls" data-order-id="<%= order.id %>" data-order-status="<%= order.status %>" data-order-archived="<%= order.archived ? '1' : '0' %>">
+            <% if (order.archived) { %>
+              <button type="button" data-action="toggle-archive" data-order-id="<%= order.id %>" data-archived="1" class="btn-secondary btn-compact w-full">
+                Unarchive order
+              </button>
+            <% } else if (order.status === 'Done' || order.status === 'Packed') { %>
+              <button type="button" data-action="toggle-archive" data-order-id="<%= order.id %>" data-archived="0" class="btn-secondary btn-compact w-full">
+                Archive order
+              </button>
+            <% } else { %>
+              <button type="button" data-action="toggle-archive" data-order-id="<%= order.id %>" data-archived="0" class="btn-secondary btn-compact w-full">
+                Archive order
+              </button>
+              <p class="text-[0.75rem] mt-1" style="color:var(--p-text-subdued)">Typically archived when status is Done or Packed.</p>
+            <% } %>
+          </div>
         </div>
       </section>
 
@@ -157,6 +178,28 @@
           <button type="button" data-action="save-notes" data-order-id="<%= order.id %>" class="btn-primary w-full mt-2">
             Save notes
           </button>
+        </div>
+      </section>
+
+      <section class="polaris-card">
+        <div class="polaris-card__header">
+          <h2 class="polaris-card__title">Activity</h2>
+          <p class="polaris-card__subtitle">Status changes, sync events, and Shopify webhooks</p>
+        </div>
+        <div class="polaris-card__body" id="activity-log-list">
+          <% if (!activityLogs || activityLogs.length === 0) { %>
+            <p class="activity-log-empty">No activity recorded yet.</p>
+          <% } else { %>
+            <% activityLogs.forEach(function(log) { %>
+              <div class="activity-log-item">
+                <div class="activity-log-item__meta">
+                  <span class="activity-log-item__actor"><%= log.actor %></span>
+                  <span class="activity-log-item__time"><%= log.created_at ? log.created_at.slice(0, 16).replace('T', ' ') : '' %></span>
+                </div>
+                <p class="activity-log-item__message"><%= log.message %></p>
+              </div>
+            <% }); %>
+          <% } %>
         </div>
       </section>
 

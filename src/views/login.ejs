@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — FulfillForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="login-body">
+  <main class="login-page">
+    <div class="login-card">
+      <div class="login-card__brand">
+        <span class="login-card__logo" aria-hidden="true">F</span>
+        <h1 class="login-card__title">FulfillForge</h1>
+        <p class="login-card__subtitle">Production workflow for Shopify merchants</p>
+      </div>
+
+      <% if (error) { %>
+        <div class="login-card__error" role="alert">
+          <%= error %>
+        </div>
+      <% } %>
+
+      <form class="login-form" method="POST" action="/login" autocomplete="on">
+        <div class="login-form__field">
+          <label class="login-form__label" for="username">Username</label>
+          <input
+            class="login-form__input"
+            type="text"
+            id="username"
+            name="username"
+            required
+            autocomplete="username"
+            autofocus
+          >
+        </div>
+        <div class="login-form__field">
+          <label class="login-form__label" for="password">Password</label>
+          <input
+            class="login-form__input"
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+        <button type="submit" class="btn-primary login-form__submit">Sign in</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

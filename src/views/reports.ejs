@@ -1,0 +1,140 @@
+<div class="page-reports page-stack">
+  <header class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title"><%= pageTitle %></h1>
+      <p class="page-header__subtitle"><%= pageSubtitle %></p>
+    </div>
+  </header>
+
+  <section class="polaris-card reports-range-card">
+    <form method="GET" action="/reports" class="index-filters" id="reports-range-form">
+      <div class="index-filters__row">
+        <div class="index-filters__field">
+          <label class="form-label" for="reports-range">Completed period</label>
+          <select id="reports-range" name="range" class="form-select form-select-compact" aria-label="Date range">
+            <option value="today" <%= range === 'today' ? 'selected' : '' %>>Today</option>
+            <option value="7d" <%= range === '7d' ? 'selected' : '' %>>Last 7 days</option>
+            <option value="30d" <%= range === '30d' ? 'selected' : '' %>>Last 30 days</option>
+          </select>
+        </div>
+        <div class="index-filters__actions">
+          <button type="submit" class="btn-primary btn-compact">Apply</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <div class="metric-row reports-metric-row" id="reports-overview-cards">
+    <% const overviewCards = [
+      { key: 'activeOrders', label: 'Active orders' },
+      { key: 'overdueOrders', label: 'Overdue orders' },
+      { key: 'dueToday', label: 'Due today' },
+      { key: 'urgentOrders', label: 'Urgent orders' },
+      { key: 'waitingMaterial', label: 'Waiting material' },
+      { key: 'completedToday', label: range === 'today' ? 'Completed today' : ('Completed (' + summary.rangeLabel.toLowerCase() + ')') },
+      { key: 'packedThisWeek', label: 'Packed this week' },
+    ]; %>
+    <% overviewCards.forEach(function(card) { %>
+      <div class="metric-card" style="cursor: default;">
+        <p class="metric-card__label"><%= card.label %></p>
+        <p class="metric-card__value" data-report-metric="<%= card.key %>"><%= summary[card.key] %></p>
+      </div>
+    <% }); %>
+  </div>
+
+  <div class="reports-grid">
+    <section class="polaris-card reports-section">
+      <div class="polaris-card__header">
+        <div class="polaris-card__heading">
+          <h2 class="polaris-card__title">Overdue orders</h2>
+          <p class="polaris-card__subtitle">Active orders past due date (excluding Done/Packed)</p>
+        </div>
+        <span class="badge badge-tone-critical" data-report-count="overdueOrders"><%= summary.overdueOrders %></span>
+      </div>
+      <div id="reports-overdue-table">
+        <%- include('partials/reportsOrderTable', {
+          orders: summary.overdueOrdersList,
+          emptyHeading: 'No overdue orders',
+          emptyMessage: 'All active orders are on schedule or completed.',
+        }) %>
+      </div>
+    </section>
+
+    <section class="polaris-card reports-section">
+      <div class="polaris-card__header">
+        <div class="polaris-card__heading">
+          <h2 class="polaris-card__title">Due today</h2>
+          <p class="polaris-card__subtitle">Active orders due today</p>
+        </div>
+        <span class="badge badge-tone-warning" data-report-count="dueToday"><%= summary.dueToday %></span>
+      </div>
+      <div id="reports-due-today-table">
+        <%- include('partials/reportsOrderTable', {
+          orders: summary.dueTodayList,
+          emptyHeading: 'Nothing due today',
+          emptyMessage: 'No active production orders are due today.',
+        }) %>
+      </div>
+    </section>
+
+    <section class="polaris-card reports-section">
+      <div class="polaris-card__header">
+        <div class="polaris-card__heading">
+          <h2 class="polaris-card__title" data-report-completed-title>
+            <%= range === 'today' ? 'Completed today' : ('Completed — ' + summary.rangeLabel) %>
+          </h2>
+          <p class="polaris-card__subtitle">Orders marked Done or Packed based on last status change</p>
+        </div>
+        <span class="badge badge-tone-success" data-report-count="completedToday"><%= summary.completedToday %></span>
+      </div>
+      <div id="reports-completed-table">
+        <%- include('partials/reportsOrderTable', {
+          orders: summary.completedTodayList,
+          showCompletedAt: true,
+          emptyHeading: 'No completed orders',
+          emptyMessage: 'No orders were marked Done or Packed in this period.',
+        }) %>
+      </div>
+    </section>
+
+    <section class="polaris-card reports-section reports-section--split">
+      <div class="polaris-card__header">
+        <h2 class="polaris-card__title">Production by status</h2>
+        <p class="polaris-card__subtitle">Active non-archived orders</p>
+      </div>
+      <div class="polaris-card__body">
+        <div class="reports-breakdown-grid" id="reports-status-breakdown">
+          <% statuses.forEach(function(status) { %>
+            <div class="reports-breakdown-item">
+              <div class="reports-breakdown-item__head">
+                <%- include('partials/statusBadge', { status: status }) %>
+              </div>
+              <p class="reports-breakdown-item__value" data-report-status="<%= status %>"><%= summary.statusCounts[status] || 0 %></p>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    </section>
+
+    <section class="polaris-card reports-section reports-section--split">
+      <div class="polaris-card__header">
+        <h2 class="polaris-card__title">Production by location</h2>
+        <p class="polaris-card__subtitle">Active non-archived orders</p>
+      </div>
+      <div class="polaris-card__body" id="reports-location-breakdown">
+        <% if (!summary.locationCounts.length) { %>
+          <p class="reports-empty-inline">No active production orders by location.</p>
+        <% } else { %>
+          <div class="reports-location-list">
+            <% summary.locationCounts.forEach(function(loc) { %>
+              <div class="reports-location-row">
+                <span class="reports-location-row__name"><%= loc.location_name %></span>
+                <span class="reports-location-row__count"><%= loc.count %></span>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+    </section>
+  </div>
+</div>

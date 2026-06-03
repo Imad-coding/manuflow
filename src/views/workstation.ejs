@@ -1,0 +1,80 @@
+<div class="page-workstation page-stack">
+  <header class="page-header page-header--workstation">
+    <div class="page-header__text">
+      <h1 class="page-header__title"><%= pageTitle %></h1>
+      <p class="page-header__subtitle"><%= pageSubtitle %></p>
+    </div>
+  </header>
+
+  <section class="polaris-card workstation-filters-card">
+    <form method="GET" action="/workstation" class="workstation-filters" id="workstation-filters-form">
+      <div class="workstation-filters__row">
+        <div class="workstation-filters__search input-with-icon">
+          <span class="input-with-icon__icon">
+            <%- include('partials/icons', { icon: 'search', cls: 'w-4 h-4' }) %>
+          </span>
+          <input type="search" name="search" value="<%= filters.search %>"
+                 placeholder="Search order, product, or SKU"
+                 class="form-input workstation-input"
+                 aria-label="Search">
+        </div>
+        <div class="workstation-filters__field">
+          <label class="form-label workstation-filter-label" for="workstation-location">Location</label>
+          <select id="workstation-location" name="location" class="form-select workstation-input" aria-label="Location">
+            <option value="">All locations</option>
+            <% locations.forEach(function(loc) { %>
+              <option value="<%= loc.id %>" <%= filters.location == loc.id ? 'selected' : '' %>><%= loc.name %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="workstation-filters__field">
+          <label class="form-label workstation-filter-label" for="workstation-status">Status</label>
+          <select id="workstation-status" name="status" class="form-select workstation-input" aria-label="Status">
+            <option value="">All statuses</option>
+            <% statuses.forEach(function(s) { %>
+              <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="workstation-filters__field">
+          <label class="form-label workstation-filter-label" for="workstation-priority">Priority</label>
+          <select id="workstation-priority" name="priority" class="form-select workstation-input" aria-label="Priority">
+            <option value="">All priorities</option>
+            <% priorities.forEach(function(p) { %>
+              <option value="<%= p %>" <%= filters.priority === p ? 'selected' : '' %>><%= p %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="workstation-filters__actions">
+          <button type="submit" class="btn-primary workstation-btn">Apply filters</button>
+          <% if (hasFilters) { %>
+            <a href="/workstation" class="btn-plain workstation-btn-plain">Reset</a>
+          <% } %>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <div class="workstation-meta">
+    <p class="workstation-count"><span id="workstation-count"><%= orders.length %></span> active order<%= orders.length === 1 ? '' : 's' %></p>
+    <p class="workstation-meta-note">Archived orders are hidden on the workstation.</p>
+  </div>
+
+  <div id="workstation-grid" class="workstation-grid" role="list">
+    <% if (orders.length === 0) { %>
+      <div class="workstation-empty" id="workstation-empty">
+        <h2><%= hasFilters ? 'No orders match your filters' : 'No active production orders' %></h2>
+        <p><%= hasFilters ? 'Try clearing filters or broadening your search.' : 'Sync orders from Shopify or check the dashboard.' %></p>
+        <% if (hasFilters) { %>
+          <a href="/workstation" class="btn-secondary workstation-btn">Reset filters</a>
+        <% } else { %>
+          <a href="/dashboard" class="btn-secondary workstation-btn">Go to dashboard</a>
+        <% } %>
+      </div>
+    <% } else { %>
+      <% orders.forEach(function(order) { %>
+        <%- include('partials/workstationCard', { order: order }) %>
+      <% }); %>
+    <% } %>
+  </div>
+</div>

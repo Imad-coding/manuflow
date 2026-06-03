@@ -9,11 +9,18 @@
          class="app-nav__link <%= activePage === 'dashboard' ? 'is-active' : '' %>">Dashboard</a>
       <a href="/production-board"
          class="app-nav__link <%= activePage === 'board' ? 'is-active' : '' %>">Production Board</a>
+      <a href="/workstation"
+         class="app-nav__link <%= activePage === 'workstation' ? 'is-active' : '' %>">Workstation</a>
+      <a href="/reports"
+         class="app-nav__link <%= activePage === 'reports' ? 'is-active' : '' %>">Reports</a>
       <a href="/settings"
          class="app-nav__link <%= activePage === 'settings' ? 'is-active' : '' %>">Settings</a>
     </nav>
     <div class="app-nav__meta">
       <%- include('connectionBadge') %>
+      <form action="/logout" method="POST" class="app-nav__logout">
+        <button type="submit" class="btn-plain btn-compact">Log out</button>
+      </form>
     </div>
   </div>
 </header>

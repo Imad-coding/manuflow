@@ -174,6 +174,343 @@
 
   <section class="polaris-card">
     <div class="polaris-card__header">
+      <div class="polaris-card__heading">
+        <h2 class="polaris-card__title">Shopify webhooks</h2>
+        <p class="polaris-card__subtitle">Automatic order sync when Shopify sends updates</p>
+      </div>
+      <span class="badge <%= webhookEnabled ? 'badge-tone-success' : 'badge-tone-neutral' %>">
+        <%= webhookEnabled ? 'Enabled' : 'Disabled' %>
+      </span>
+    </div>
+    <div class="polaris-card__body space-y-4">
+      <dl class="order-meta-grid">
+        <div><dt>Webhooks enabled</dt><dd><%= webhookEnabled ? 'Yes' : 'No' %></dd></div>
+        <div><dt>Custom app secret</dt><dd><%= customAppWebhookSecretConfigured ? 'Configured' : 'Not configured' %> (<span class="code-inline">SHOPIFY_WEBHOOK_SECRET</span>)</dd></div>
+        <div><dt>Manual Admin secret</dt><dd><%= manualWebhookSecretConfigured ? 'Configured' : 'Not configured' %> (<span class="code-inline">SHOPIFY_MANUAL_WEBHOOK_SECRET</span>)</dd></div>
+        <div><dt>App base URL</dt><dd class="code-inline settings-webhook-url"><%= appBaseUrl %></dd></div>
+        <div><dt>Last delivery matched</dt><dd><%= latestWebhook && latestWebhook.matched_secret ? latestWebhook.matched_secret : '—' %></dd></div>
+        <div><dt>Last delivery</dt><dd><%= latestWebhook ? latestWebhook.created_at : 'None received yet' %></dd></div>
+      </dl>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" id="register-webhooks-btn" data-action="register-webhooks" class="btn-primary btn-compact" <%= !isConnected ? 'disabled' : '' %>>
+          Register webhooks
+        </button>
+        <button type="button" id="refresh-webhooks-btn" data-action="refresh-webhooks" class="btn-secondary btn-compact" <%= !isConnected ? 'disabled' : '' %>>
+          Refresh list
+        </button>
+        <button type="button" id="webhook-self-test-btn" data-action="webhook-self-test" class="btn-secondary btn-compact">
+          Run webhook pipeline self-test
+        </button>
+        <button type="button" id="broadcast-test-btn" data-action="broadcast-test" class="btn-secondary btn-compact">
+          Test live update
+        </button>
+      </div>
+
+      <div id="webhook-register-result" class="sync-result hidden"></div>
+
+      <div class="settings-env-table">
+        <div class="settings-env-table__head">Webhook callback URLs (registered automatically or manually)</div>
+        <% const webhookPaths = [
+          'orders-create',
+          'orders-updated',
+          'orders-cancelled',
+          'fulfillment-orders-updated',
+        ]; %>
+        <% webhookPaths.forEach(function(path) { %>
+          <div class="settings-env-row">
+            <span class="code-inline"><%= path.replace(/-/g, '/') %></span>
+            <span class="code-inline settings-webhook-url"><%= appBaseUrl %>/webhooks/shopify/<%= path %></span>
+          </div>
+        <% }); %>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="data-table data-table-compact min-w-full" id="shopify-webhooks-table">
+          <thead>
+            <tr>
+              <th>Topic</th>
+              <th>Callback URL</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="shopify-webhooks-body">
+            <tr>
+              <td colspan="3" class="text-xs" style="color:var(--p-text-subdued)">Click “Refresh list” to load Shopify webhook subscriptions.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-[0.75rem]" style="color:var(--p-text-subdued)">
+        FullfilForge-registered webhooks use <span class="code-inline">SHOPIFY_WEBHOOK_SECRET</span> (custom app Client secret).
+        Manually created Shopify Admin webhooks may use a different signing secret — set <span class="code-inline">SHOPIFY_MANUAL_WEBHOOK_SECRET</span> if needed.
+        Recommended: use only FullfilForge-registered webhooks and delete manual duplicates in Shopify Admin.
+      </p>
+
+      <div class="settings-env-table__head" style="margin-top:1rem;">Latest webhook deliveries (last 20)</div>
+      <% if (webhookHistory && webhookHistory.length > 0) { %>
+        <div class="overflow-x-auto">
+          <table class="data-table data-table-compact min-w-full webhook-events-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Route</th>
+                <th>Topic</th>
+                <th>Shop</th>
+                <th>Webhook ID</th>
+                <th>HMAC</th>
+                <th>Matched secret</th>
+                <th>Status</th>
+                <th>Sync triggered</th>
+                <th>Sync completed</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% webhookHistory.forEach(function(event) { %>
+                <tr>
+                  <td class="cell-date text-xs whitespace-nowrap"><%= event.created_at %></td>
+                  <td class="text-xs max-w-[100px] truncate" title="<%= event.route || '' %>"><%= event.route || '—' %></td>
+                  <td class="text-xs max-w-[120px] truncate" title="<%= event.topic || '' %>"><%= event.topic || '—' %></td>
+                  <td class="text-xs max-w-[100px] truncate" title="<%= event.shop_domain || '' %>"><%= event.shop_domain || '—' %></td>
+                  <td class="text-xs code-inline max-w-[90px] truncate" title="<%= event.webhook_id || '' %>"><%= event.webhook_id || '—' %></td>
+                  <td class="text-xs">
+                    <% if (event.hmac_valid === true) { %>
+                      <span class="badge badge-tone-success">valid</span>
+                    <% } else if (event.hmac_valid === false) { %>
+                      <span class="badge badge-tone-critical">invalid</span>
+                    <% } else { %>
+                      <span class="badge badge-tone-neutral">n/a</span>
+                    <% } %>
+                  </td>
+                  <td class="text-xs"><%= event.matched_secret || '—' %></td>
+                  <td class="cell-badge">
+                    <span class="badge <%= event.status === 'received' || event.status === 'processed' || event.status === 'sync_scheduled' ? 'badge-tone-success' : event.status === 'rejected' || event.status === 'sync_failed' ? 'badge-tone-critical' : 'badge-tone-neutral' %>"><%= event.status %></span>
+                  </td>
+                  <td class="text-xs"><%= event.sync_triggered ? 'yes' : 'no' %></td>
+                  <td class="text-xs"><%= event.sync_completed ? 'yes' : 'no' %></td>
+                  <td class="max-w-[180px] truncate text-xs" style="color:var(--p-text-subdued)" title="<%= event.message %>"><%= event.message %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <p style="color:var(--p-text-subdued)">No webhook deliveries recorded yet. Trigger an order update in Shopify or run the self-test.</p>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <div class="polaris-card__heading">
+        <h2 class="polaris-card__title">Due Date Rules</h2>
+        <p class="polaris-card__subtitle">Automatic due dates for new production orders</p>
+      </div>
+    </div>
+    <div class="polaris-card__body space-y-4">
+      <p class="text-[0.8125rem]" style="color:var(--p-text-subdued); margin:0;">
+        New Shopify orders without a due date will automatically receive a due date based on these rules.
+        Manual due date edits are always preserved during sync.
+      </p>
+
+      <form id="due-date-settings-form" class="settings-form-grid">
+        <label class="settings-toggle-row">
+          <input type="checkbox" id="due-auto-assign" name="auto_assign_enabled"
+                 <%= dueDateSettings.auto_assign_enabled ? 'checked' : '' %>>
+          <span>Auto-assign due dates for new orders</span>
+        </label>
+
+        <div class="settings-form-field">
+          <label for="due-lead-time" class="form-label">Default lead time (days)</label>
+          <input type="number" id="due-lead-time" name="default_lead_time_days"
+                 class="form-input form-input-compact settings-number-input"
+                 min="0" max="365" step="1"
+                 value="<%= dueDateSettings.default_lead_time_days %>">
+        </div>
+
+        <div class="settings-form-field">
+          <label for="due-lead-type" class="form-label">Lead time type</label>
+          <select id="due-lead-type" name="use_business_days" class="form-select form-select-compact">
+            <option value="business" <%= dueDateSettings.use_business_days ? 'selected' : '' %>>Business days</option>
+            <option value="calendar" <%= !dueDateSettings.use_business_days ? 'selected' : '' %>>Calendar days</option>
+          </select>
+        </div>
+
+        <label class="settings-toggle-row">
+          <input type="checkbox" id="due-skip-weekends" name="skip_weekends"
+                 <%= dueDateSettings.skip_weekends ? 'checked' : '' %>>
+          <span>Skip weekends</span>
+        </label>
+      </form>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" id="save-due-date-settings-btn" data-action="save-due-date-settings" class="btn-primary btn-compact">
+          Save settings
+        </button>
+      </div>
+      <div id="due-date-settings-result" class="sync-result hidden"></div>
+    </div>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
+      <div class="polaris-card__heading">
+        <h2 class="polaris-card__title">Production Rules</h2>
+        <p class="polaris-card__subtitle">Automate priority, due dates, status, and notes from order data</p>
+      </div>
+    </div>
+    <div class="polaris-card__body space-y-4">
+      <p class="text-[0.8125rem]" style="color:var(--p-text-subdued); margin:0;">
+        Rules run automatically when new production orders are created from Shopify sync.
+        Existing manual edits are preserved on re-sync. Use &ldquo;Apply rules to existing orders&rdquo; to backfill active orders.
+      </p>
+
+      <form id="production-rule-form" class="production-rule-form">
+        <input type="hidden" id="production-rule-id" value="">
+
+        <div class="production-rule-form__grid">
+          <div class="settings-form-field">
+            <label for="rule-name" class="form-label">Rule name</label>
+            <input type="text" id="rule-name" name="name" class="form-input form-input-compact" required
+                   placeholder="Rush SKU priority">
+          </div>
+
+          <div class="settings-form-field">
+            <label for="rule-condition-type" class="form-label">Condition type</label>
+            <select id="rule-condition-type" name="condition_type" class="form-select form-select-compact">
+              <% ruleConditionTypes.forEach(function(type) { %>
+                <option value="<%= type %>"><%= type === 'sku' ? 'SKU' : type === 'product_title' ? 'Product title' : type === 'location_name' ? 'Location name' : type === 'customer_name' ? 'Customer name' : 'Order name' %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div class="settings-form-field">
+            <label for="rule-condition-operator" class="form-label">Operator</label>
+            <select id="rule-condition-operator" name="condition_operator" class="form-select form-select-compact">
+              <% ruleOperators.forEach(function(op) { %>
+                <option value="<%= op %>"><%= op === 'contains' ? 'Contains' : op === 'starts_with' ? 'Starts with' : 'Equals' %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div class="settings-form-field">
+            <label for="rule-condition-value" class="form-label">Value</label>
+            <input type="text" id="rule-condition-value" name="condition_value" class="form-input form-input-compact" required
+                   placeholder="RUSH">
+          </div>
+
+          <div class="settings-form-field">
+            <label for="rule-action-type" class="form-label">Action type</label>
+            <select id="rule-action-type" name="action_type" class="form-select form-select-compact">
+              <% ruleActionTypes.forEach(function(type) { %>
+                <option value="<%= type %>"><%= type === 'set_priority' ? 'Set priority' : type === 'set_due_days' ? 'Set due date (business days)' : type === 'add_internal_note' ? 'Add internal note' : 'Set status' %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div class="settings-form-field" id="rule-action-value-field">
+            <label for="rule-action-value" class="form-label" id="rule-action-value-label">Action value</label>
+            <select id="rule-action-value-priority" class="form-select form-select-compact rule-action-value-input hidden">
+              <% priorities.forEach(function(priority) { %>
+                <option value="<%= priority %>"><%= priority %></option>
+              <% }); %>
+            </select>
+            <select id="rule-action-value-status" class="form-select form-select-compact rule-action-value-input hidden">
+              <% statuses.forEach(function(status) { %>
+                <option value="<%= status %>"><%= status %></option>
+              <% }); %>
+            </select>
+            <input type="number" id="rule-action-value-days" class="form-input form-input-compact rule-action-value-input hidden"
+                   min="0" max="365" step="1" value="5">
+            <input type="text" id="rule-action-value-text" class="form-input form-input-compact rule-action-value-input hidden"
+                   placeholder="Internal note text">
+          </div>
+
+          <label class="settings-toggle-row">
+            <input type="checkbox" id="rule-enabled" name="enabled" checked>
+            <span>Enabled</span>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <button type="button" id="save-production-rule-btn" data-action="save-production-rule" class="btn-primary btn-compact">
+            Create rule
+          </button>
+          <button type="button" id="cancel-production-rule-btn" data-action="cancel-production-rule" class="btn-secondary btn-compact hidden">
+            Cancel edit
+          </button>
+        </div>
+      </form>
+
+      <% if (productionRules.length === 0) { %>
+        <p id="production-rules-empty" class="text-[0.8125rem]" style="color:var(--p-text-subdued); margin:0;">No production rules yet.</p>
+      <% } else { %>
+        <div class="polaris-card__body polaris-card__body--flush overflow-x-auto" style="padding:0;">
+          <table class="data-table data-table-compact min-w-full" id="production-rules-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Condition</th>
+                <th>Action</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% productionRules.forEach(function(rule) { %>
+                <tr data-rule-id="<%= rule.id %>">
+                  <td><%= rule.name %></td>
+                  <td class="text-sm" style="color:var(--p-text-subdued);">
+                    <%= rule.condition_type === 'sku' ? 'SKU' : rule.condition_type === 'product_title' ? 'Product title' : rule.condition_type === 'location_name' ? 'Location name' : rule.condition_type === 'customer_name' ? 'Customer name' : 'Order name' %>
+                    <%= rule.condition_operator === 'contains' ? 'contains' : rule.condition_operator === 'starts_with' ? 'starts with' : 'equals' %>
+                    &ldquo;<%= rule.condition_value %>&rdquo;
+                  </td>
+                  <td class="text-sm" style="color:var(--p-text-subdued);">
+                    <%= rule.action_type === 'set_priority' ? 'Set priority' : rule.action_type === 'set_due_days' ? 'Set due date' : rule.action_type === 'add_internal_note' ? 'Add note' : 'Set status' %>
+                    &rarr; <%= rule.action_value %>
+                  </td>
+                  <td>
+                    <span class="badge <%= rule.enabled ? 'badge-tone-success' : 'badge-tone-neutral' %>">
+                      <%= rule.enabled ? 'Enabled' : 'Disabled' %>
+                    </span>
+                  </td>
+                  <td class="text-right whitespace-nowrap">
+                    <button type="button" class="btn-link btn-compact" data-action="edit-production-rule"
+                            data-rule-id="<%= rule.id %>"
+                            data-rule-name="<%= rule.name %>"
+                            data-rule-enabled="<%= rule.enabled ? '1' : '0' %>"
+                            data-rule-condition-type="<%= rule.condition_type %>"
+                            data-rule-condition-operator="<%= rule.condition_operator %>"
+                            data-rule-condition-value="<%= rule.condition_value %>"
+                            data-rule-action-type="<%= rule.action_type %>"
+                            data-rule-action-value="<%= rule.action_value %>">Edit</button>
+                    <button type="button" class="btn-link btn-compact" data-action="toggle-production-rule"
+                            data-rule-id="<%= rule.id %>"
+                            data-rule-enabled="<%= rule.enabled ? '0' : '1' %>"><%= rule.enabled ? 'Disable' : 'Enable' %></button>
+                    <button type="button" class="btn-link btn-compact" data-action="delete-production-rule"
+                            data-rule-id="<%= rule.id %>"
+                            data-rule-name="<%= rule.name %>">Delete</button>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+
+      <div class="flex flex-wrap items-center gap-2 pt-2 border-t" style="border-color:var(--p-border-subdued);">
+        <button type="button" id="apply-production-rules-btn" data-action="apply-production-rules-existing" class="btn-secondary btn-compact">
+          Apply rules to existing orders
+        </button>
+      </div>
+      <div id="production-rules-apply-result" class="sync-result hidden"></div>
+    </div>
+  </section>
+
+  <section class="polaris-card">
+    <div class="polaris-card__header">
       <h2 class="polaris-card__title">Locations</h2>
       <p class="polaris-card__subtitle">Enable fulfillment locations for dashboard filters</p>
     </div>

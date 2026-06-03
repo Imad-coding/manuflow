@@ -8,7 +8,7 @@ const { renderPage } = require('../utils/render');
 const router = express.Router();
 
 router.get('/dashboard', (req, res, next) => {
-  const { status, location, search, priority } = req.query;
+  const { status, location, search, priority, archive } = req.query;
   const shopId = getCurrentShopId();
 
   const rows = listOrdersForDashboard({
@@ -17,6 +17,7 @@ router.get('/dashboard', (req, res, next) => {
     locationId: location ? Number(location) : undefined,
     search: search || undefined,
     priority: priority || undefined,
+    archive: archive || undefined,
   });
 
   const totalItems = rows.reduce((sum, order) => sum + (order.items?.length || 0), 0);
@@ -25,13 +26,14 @@ router.get('/dashboard', (req, res, next) => {
 
   const locations = listLocations(shopId, { enabledOnly: false });
 
-  const hasFilters = Boolean(status || location || search || priority);
+  const hasFilters = Boolean(status || location || search || priority || (archive && archive !== 'active'));
 
   const exportQuery = new URLSearchParams();
   if (status) exportQuery.set('status', status);
   if (location) exportQuery.set('location', location);
   if (search) exportQuery.set('search', search);
   if (priority) exportQuery.set('priority', priority);
+  if (archive && archive !== 'active') exportQuery.set('archive', archive);
   const exportUrl = `/export/production-orders.csv${exportQuery.toString() ? `?${exportQuery}` : ''}`;
 
   renderPage(res, 'dashboard', {
@@ -44,7 +46,13 @@ router.get('/dashboard', (req, res, next) => {
     statuses: STATUSES,
     priorities: PRIORITIES,
     overview: getDashboardOverviewCounts(shopId),
-    filters: { status: status || '', location: location || '', search: search || '', priority: priority || '' },
+    filters: {
+      status: status || '',
+      location: location || '',
+      search: search || '',
+      priority: priority || '',
+      archive: archive || 'active',
+    },
     hasFilters,
     exportUrl,
   }, next);

@@ -1,0 +1,81 @@
+<% const orderId = order.id || order.production_order_id; %>
+<% const items = Array.isArray(order.items) ? order.items : []; %>
+<% const notesPreview = order.internal_notes ? String(order.internal_notes).trim() : ''; %>
+<article class="workstation-card" role="listitem" data-workstation-card-for="<%= orderId %>" data-order-status="<%= order.status %>">
+  <header class="workstation-card__header">
+    <div class="workstation-card__title-block">
+      <h2 class="workstation-card__order"><%= order.order_name %></h2>
+      <% if (order.customer_name) { %>
+        <p class="workstation-card__customer"><%= order.customer_name %></p>
+      <% } %>
+    </div>
+    <div class="workstation-card__badges">
+      <span class="workstation-card__status-badge" data-status-cell-for="<%= orderId %>"><%- include('statusBadge', { status: order.status }) %></span>
+      <span class="workstation-card__priority-badge" data-priority-cell-for="<%= orderId %>"><%- include('priorityBadge', { priority: order.priority }) %></span>
+      <span class="workstation-card__due-badge" data-due-badge-for="<%= orderId %>"><%- include('dueDateBadge', { dueDate: order.due_date, compactMode: false }) %></span>
+    </div>
+  </header>
+
+  <dl class="workstation-card__meta">
+    <div><dt>Location</dt><dd><%= order.location_name || 'Unassigned' %></dd></div>
+    <div><dt>Order date</dt><dd><%= order.order_date ? order.order_date.slice(0, 10) : '—' %></dd></div>
+    <div><dt>Items</dt><dd><%= items.length %></dd></div>
+  </dl>
+
+  <% if (items.length > 0) { %>
+    <ul class="workstation-card__products">
+      <% items.forEach(function(item) { %>
+        <li class="workstation-product">
+          <div class="workstation-product__thumb">
+            <% if (item.image_url) { %>
+              <img src="<%= item.image_url %>" alt="" loading="lazy">
+            <% } else { %>
+              <span class="workstation-product__thumb-empty" aria-hidden="true">—</span>
+            <% } %>
+          </div>
+          <div class="workstation-product__body">
+            <p class="workstation-product__title"><%= item.title %></p>
+            <p class="workstation-product__sku"><span>SKU</span> <%= item.sku || '—' %></p>
+            <% if (item.variant_label) { %>
+              <p class="workstation-product__variant"><%= item.variant_label %></p>
+            <% } %>
+            <% if (item.options && item.options.length) { %>
+              <p class="workstation-product__options">
+                <% item.options.forEach(function(opt, idx) { %>
+                  <%= opt.name %>: <%= opt.value %><%= idx < item.options.length - 1 ? ' · ' : '' %>
+                <% }); %>
+              </p>
+            <% } %>
+          </div>
+          <div class="workstation-product__qty">×<%= item.quantity %></div>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+
+  <% if (notesPreview) { %>
+    <div class="workstation-card__notes">
+      <p class="workstation-card__notes-label">Internal notes</p>
+      <p class="workstation-card__notes-text"><%= notesPreview.length > 160 ? notesPreview.slice(0, 160) + '…' : notesPreview %></p>
+    </div>
+  <% } %>
+
+  <div class="workstation-card__actions">
+    <a href="/orders/<%= orderId %>" class="btn-secondary workstation-action-btn">View details</a>
+    <a href="/orders/<%= orderId %>/print" target="_blank" rel="noopener noreferrer" class="btn-secondary workstation-action-btn">Print sheet</a>
+  </div>
+
+  <div class="workstation-card__status-actions">
+    <% const quickStatuses = ['In Production', 'Done', 'Packed']; %>
+    <% quickStatuses.forEach(function(s) { %>
+      <button type="button"
+              class="workstation-status-btn<%= order.status === s ? ' is-current' : '' %>"
+              data-action="workstation-status"
+              data-order-id="<%= orderId %>"
+              data-status="<%= s %>"
+              <%= order.status === s ? 'disabled aria-current="true"' : '' %>>
+        Mark <%= s %>
+      </button>
+    <% }); %>
+  </div>
+</article>

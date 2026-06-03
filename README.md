@@ -60,7 +60,137 @@ Open [http://localhost:3000](http://localhost:3000)
 
 | `SQLITE_DATABASE_PATH` | SQLite file path (default: `./data/manuflow.sqlite3`) |
 
+| `BACKUP_DIR` | Backup output directory (default: `./backups`) |
+
 | `PORT` | Server port (default: `3000`) |
+
+| `APP_LOGIN_USERNAME` | Admin login username (default: `admin`) |
+
+| `APP_LOGIN_PASSWORD` | Admin login password (**required in production**) |
+
+| `SESSION_SECRET` | Secret for signing session cookies (**required in production**) |
+
+| `SHOPIFY_WEBHOOK_ENABLED` | Enable webhook processing (`true` / `false`) |
+
+| `SHOPIFY_WEBHOOK_SECRET` | HMAC secret for FullfilForge-registered webhooks (custom app Client secret) |
+
+| `SHOPIFY_MANUAL_WEBHOOK_SECRET` | Optional HMAC secret for manually created Shopify Admin webhooks |
+
+| `APP_BASE_URL` | Public app URL for webhook callbacks (e.g. `https://fullfilforge.store`) |
+
+
+
+### Production login
+
+
+
+Set these before deploying to a public URL:
+
+
+
+```env
+
+APP_LOGIN_USERNAME=admin
+
+APP_LOGIN_PASSWORD=your_strong_password
+
+SESSION_SECRET=your_random_secret
+
+```
+
+
+
+All dashboard pages and API routes require sign-in. `/health` stays public for uptime checks.
+
+
+
+## Shopify Custom App Webhooks
+
+
+
+FullfilForge can register Shopify webhooks automatically using your custom app credentials in `.env` (no OAuth or install flow).
+
+
+
+### Required env vars
+
+
+
+```env
+
+SHOPIFY_WEBHOOK_ENABLED=true
+
+SHOPIFY_WEBHOOK_SECRET=your_custom_app_client_secret
+
+SHOPIFY_MANUAL_WEBHOOK_SECRET=
+
+APP_BASE_URL=https://fullfilforge.store
+
+```
+
+
+
+Also ensure `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_ACCESS_TOKEN`, and `SHOPIFY_API_VERSION` are set. Your custom app needs the **`write_webhooks`** Admin API scope (in addition to order/location scopes).
+
+
+
+### Webhook signing secrets
+
+
+
+| Source | Env variable | When to use |
+
+|--------|--------------|-------------|
+
+| FullfilForge **Register webhooks** (GraphQL API) | `SHOPIFY_WEBHOOK_SECRET` | Set to your custom app **Client secret** (API credentials) |
+
+| Manually created in **Shopify Admin → Settings → Notifications → Webhooks** | `SHOPIFY_MANUAL_WEBHOOK_SECRET` | Set to the signing secret shown when you create the Admin webhook |
+
+
+
+FullfilForge tries `SHOPIFY_WEBHOOK_SECRET` first, then `SHOPIFY_MANUAL_WEBHOOK_SECRET` if the first fails. Invalid HMAC is always rejected.
+
+
+
+**Recommended production setup:** use only FullfilForge-registered webhooks (`Register webhooks` in Settings) and delete any duplicate manual webhooks in Shopify Admin to avoid double deliveries.
+
+
+
+### Setup steps
+
+
+
+1. Add the env vars above on your VPS
+
+2. Restart PM2: `pm2 restart fulfillforge`
+
+3. Open **Settings** in FullfilForge
+
+4. Click **Register webhooks** — missing subscriptions are created via Shopify Admin GraphQL
+
+5. Click **Refresh list** to verify topics and callback URLs appear
+
+6. Create or update an order in Shopify
+
+7. FullfilForge should sync automatically and connected browsers receive live updates (no manual refresh required)
+
+
+
+### Webhook callback URLs
+
+
+
+| Topic area | Callback URL |
+
+|------------|--------------|
+
+| Orders create / update / cancel | `https://fullfilforge.store/webhooks/shopify/orders-create` (and `-updated`, `-cancelled`) |
+
+| Fulfillment order events | `https://fullfilforge.store/webhooks/shopify/fulfillment-orders-updated` |
+
+
+
+Optional fulfillment-order topics are registered when supported; failures are logged without breaking order webhooks.
 
 
 
@@ -244,19 +374,43 @@ npm run backup
 
 
 
-Backups are written to `./backups/` (or `SQLITE_BACKUP_DIR` if set) as:
+Backups are written to `./backups/` by default (override with `BACKUP_DIR` in `.env`). Production example:
+
+
+
+```env
+
+BACKUP_DIR=/home/fullfil/manuflow/backups
+
+```
+
+
+
+Filename format:
 
 
 
 ```
 
-fulfillforge-backup-YYYY-MM-DD-HH-mm.sqlite3
+fullfilforge-backup-YYYY-MM-DD-HH-mm.sqlite3
 
 ```
 
 
 
-The script reads `SQLITE_DATABASE_PATH` from `.env` (default: `./data/manuflow.sqlite3`), runs `PRAGMA wal_checkpoint(FULL)` before copying, and does **not** serve backup files over HTTP — they stay outside `public/`.
+The script reads `SQLITE_DATABASE_PATH` from `.env` (default: `./data/manuflow.sqlite3`), runs `PRAGMA wal_checkpoint(FULL)` before copying, keeps the **14 most recent** backup files, and deletes older ones automatically (`backup.log` is never removed). Backups stay outside `public/` and are **not** served over HTTP.
+
+
+
+### Scheduled backups (cron)
+
+
+
+```cron
+
+0 3 * * * cd /home/fullfil/manuflow && npm run backup >> /home/fullfil/manuflow/backups/backup.log 2>&1
+
+```
 
 
 

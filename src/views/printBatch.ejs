@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'Batch Print' %> — FulfillForge</title>
+  <%- include('partials/printSheetStyles') %>
+</head>
+<body>
+  <% if (typeof empty !== 'undefined' && empty) { %>
+    <div class="sheet not-found">
+      <div class="no-print toolbar">
+        <a href="/dashboard">← Back to Dashboard</a>
+      </div>
+      <h1><%= typeof emptyHeading !== 'undefined' ? emptyHeading : 'No orders to print' %></h1>
+      <p><%= typeof message !== 'undefined' ? message : 'Select production orders on the dashboard and try again.' %></p>
+    </div>
+  <% } else { %>
+    <div class="no-print toolbar sheet" style="border-bottom: none; padding-bottom: 0;">
+      <button type="button" class="primary" onclick="window.print()">Print all sheets</button>
+      <a href="/dashboard">← Back to Dashboard</a>
+      <span style="font-size: 0.85rem; color: #444;"><%= orders.length %> production sheet<%= orders.length === 1 ? '' : 's' %></span>
+    </div>
+
+    <% orders.forEach(function(order, index) { %>
+      <div class="sheet sheet-page">
+        <%- include('partials/printOrderSheetBody', { order: order, printedAt: printedAt }) %>
+      </div>
+    <% }); %>
+  <% } %>
+</body>
+</html>
